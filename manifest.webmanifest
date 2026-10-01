@@ -1,0 +1,73 @@
+{
+ "id": "folio-pdf-reader",
+ "name": "Folio",
+ "short_name": "Folio",
+ "description": "Read PDFs and EPUBs like a book, privately and offline.",
+ "start_url": "./",
+ "scope": "./",
+ "display": "standalone",
+ "orientation": "any",
+ "background_color": "#d8ddda",
+ "theme_color": "#d8ddda",
+ "categories": [
+  "books",
+  "productivity"
+ ],
+ "icons": [
+  {
+   "src": "icon-192.png",
+   "sizes": "192x192",
+   "type": "image/png",
+   "purpose": "any"
+  },
+  {
+   "src": "icon-512.png",
+   "sizes": "512x512",
+   "type": "image/png",
+   "purpose": "any"
+  },
+  {
+   "src": "icon-maskable-512.png",
+   "sizes": "512x512",
+   "type": "image/png",
+   "purpose": "maskable"
+  }
+ ],
+ "file_handlers": [
+  {
+   "action": "./",
+   "accept": {
+    "application/pdf": [
+     ".pdf"
+    ],
+    "application/epub+zip": [
+     ".epub"
+    ]
+   }
+  }
+ ],
+ "launch_handler": {
+  "client_mode": [
+   "focus-existing",
+   "auto"
+  ]
+ },
+ "share_target": {
+  "action": "./share",
+  "method": "POST",
+  "enctype": "multipart/form-data",
+  "params": {
+   "files": [
+    {
+     "name": "pdf",
+     "accept": [
+      "application/pdf",
+      ".pdf",
+      "application/epub+zip",
+      ".epub"
+     ]
+    }
+   ]
+  }
+ }
+}
