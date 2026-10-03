@@ -78,6 +78,10 @@ body.drag #stage{outline:2px dashed var(--acc);outline-offset:-10px}
 #dict .pos{color:var(--acc);font-size:.88em}
 #dict .dn,#dict .src{margin:.5em 0 0;color:var(--mute);font-size:.85em}
 @media (max-width:700px){#dict{left:12px;right:12px}}
+#dict .ipa{font:400 .72em system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--mute);margin-left:.5em}
+#dict .pl{margin:0 0 .2em;color:var(--acc);font-size:.88em;font-style:italic}
+#dict .num{color:var(--mute)}
+#dict .base{font-size:1.08em;margin:.9em 0 .35em;padding-top:.6em;border-top:1px solid var(--edge)}
 </style>
 </head>
 <body class="shelf">
@@ -269,7 +273,7 @@ async function read(pdf,label=''){
 }
 
 // Library: lives in this browser's IndexedDB on this device and is never sent anywhere.
-const dbp=new Promise((ok,no)=>{const r=indexedDB.open('folio',2);r.onupgradeneeded=()=>{const d=r.result,has=n=>d.objectStoreNames.contains(n);if(!has('books'))d.createObjectStore('books',{keyPath:'id',autoIncrement:true});if(!has('text'))d.createObjectStore('text');if(!has('dict'))d.createObjectStore('dict')};r.onblocked=()=>say('Close any other open Folio window to finish updating.');r.onsuccess=()=>{r.result.onversionchange=()=>r.result.close();ok(r.result)};r.onerror=()=>no(r.error)});
+const dbp=new Promise((ok,no)=>{const r=indexedDB.open('folio',3);r.onupgradeneeded=()=>{const d=r.result,has=n=>d.objectStoreNames.contains(n);if(!has('books'))d.createObjectStore('books',{keyPath:'id',autoIncrement:true});if(!has('text'))d.createObjectStore('text');if(!has('dict'))d.createObjectStore('dict');if(!has('wik'))d.createObjectStore('wik')};r.onblocked=()=>say('Close any other open Folio window to finish updating.');r.onsuccess=()=>{r.result.onversionchange=()=>r.result.close();ok(r.result)};r.onerror=()=>no(r.error)});
 dbp.catch(()=>say('This browser is blocking local storage, so your library cannot be saved. Private windows often do this.'));
 const idb=fn=>dbp.then(d=>new Promise((ok,no)=>{const t=d.transaction(['books','text'],'readwrite'),r=fn(t.objectStore('books'),t.objectStore('text'));t.oncomplete=()=>ok(r instanceof IDBRequest?r.result:r);t.onerror=t.onabort=()=>no(t.error)}));
 let sv;
@@ -886,27 +890,67 @@ function forms(w){
 }
 let added=[];try{added=JSON.parse(store.get('folio:dicts')||'[]')}catch(e){}
 const dinfo=()=>{$('#dinfo').textContent=`Built in: ${starter.size} words (starter). Added: ${added.length?added.map(d=>`${d.name} (${d.n.toLocaleString()})`).join(', '):'none'}.`};
-const dmany=keys=>dbp.then(d=>new Promise(ok=>{try{const s=d.transaction('dict').objectStore('dict'),r=keys.map(k=>s.get(k)),t=s.transaction;t.oncomplete=()=>ok(r.map(q=>q.result||null));t.onerror=t.onabort=()=>ok(keys.map(()=>null))}catch(e){ok(keys.map(()=>null))}})).catch(()=>keys.map(()=>null));
-async function define(raw){
-  const t=raw.replace(/[’‘]/g,"'").replace(/^[^\p{L}]+|[^\p{L}]+$/gu,'').toLowerCase().replace(/'s$/,'');
+const bcache=new Map(),pre=w=>w.slice(0,3);
+const dmany=keys=>dbp.then(d=>new Promise(ok=>{
+  try{
+    const t=d.transaction(['dict','wik']),s1=t.objectStore('dict'),s2=t.objectStore('wik'),r1=keys.map(k=>s1.get(k)),
+      r2=new Map([...new Set(keys.map(pre))].filter(x=>!bcache.has(x)).map(x=>[x,s2.get(x)]));
+    t.oncomplete=()=>ok(keys.map((k,i)=>{
+      if(r1[i].result)return r1[i].result;
+      const x=pre(k);let o=bcache.get(x);
+      if(!o){
+        const v=r2.has(x)?r2.get(x).result:null;
+        try{o=v?JSON.parse(v):{e:[]}}catch(e){o={e:[]}}
+        o.m=new Map(o.e.map(r=>[r.w,r]));bcache.set(x,o);if(bcache.size>10)bcache.delete(bcache.keys().next().value);
+      }
+      const r=o.m.get(k);return r?{...r,src:r.src||o.src}:null;
+    }));
+    t.onerror=t.onabort=()=>ok(keys.map(()=>null));
+  }catch(e){ok(keys.map(()=>null))}
+})).catch(()=>keys.map(()=>null));
+const POSN={adj:'adjective',adv:'adverb',pron:'pronoun',prep:'preposition',conj:'conjunction',intj:'interjection',name:'proper noun',num:'numeral',det:'determiner',part:'particle',art:'article',abbrev:'abbreviation',postp:'postposition'};
+const FORMOF=/(?:plural|past participle|present participle|past tense|simple past|third[- ]person singular|comparative|superlative|gerund|alternative (?:form|spelling)|obsolete (?:form|spelling)|archaic (?:form|spelling)|informal (?:form|spelling)|nonstandard (?:form|spelling)|misspelling)\b[^.;(]*?\bof\s+([\p{L}][\p{L}'’-]*)/iu;
+// cap = a capitalised word in the middle of a sentence, so try the capitalised entry first (Paris, Polish)
+async function define(raw,cap){
+  const clean=raw.replace(/[’‘]/g,"'").replace(/^[^\p{L}]+|[^\p{L}]+$/gu,'').replace(/'s$/,''),t=clean.toLowerCase();
   if(!t)return{q:raw,miss:true};
-  const parts=t.split(/[\s-]+/).filter(Boolean).slice(0,4),cand=[...new Set([t,...parts].flatMap(forms))],got=await dmany(cand);
+  const T=s=>s[0].toUpperCase()+s.slice(1),parts=t.split(/[\s-]+/).filter(Boolean).slice(0,4),
+    low=[...new Set([t,...parts].flatMap(forms))],up=[...new Set([clean,T(t),t.toUpperCase()])].filter(x=>x!==t),
+    cand=cap?[...up,...low]:[...low,...up],got=await dmany(cand);
   for(let i=0;i<cand.length;i++){
-    const a=got[i];if(a)return{q:t,hw:a.w||cand[i],s:a.s,src:a.src};
-    const s=starter.get(cand[i]);if(s)return{q:t,hw:cand[i],s,src:'Starter dictionary written for Folio (limited)'};
+    const a=got[i];
+    if(a){const r={q:t,hw:a.w||cand[i],s:a.s,src:a.src,i:a.i,p:a.p,y:a.y,n:a.n};await baseOf(r);return r}
+    const s=starter.get(cand[i].toLowerCase());if(s)return{q:t,hw:cand[i].toLowerCase(),s,src:'Starter dictionary written for Folio (limited)'};
   }
   return{q:t,miss:true};
+}
+// "simple past of abate", "plural of pari": also show the entry for the base word
+async function baseOf(r){
+  for(const x of r.s.slice(0,2)){
+    const m=typeof x==='string'&&FORMOF.exec(x);
+    if(!m)continue;
+    const a=(await dmany([...new Set([m[1].toLowerCase(),m[1]])])).find(Boolean);
+    if(a&&a.w!==r.hw)r.base={hw:a.w,s:a.s,p:a.p,i:a.i,y:a.y,n:a.n};
+    return;
+  }
 }
 let lastQ='',seq=0;
 function hideCard(){seq++;if(card.hidden)return;card.hidden=true;lastQ='';const s=getSelection();if(s)s.removeAllRanges()}
 function paint(r,q){
   const mk=(tag,c,x)=>{const e=document.createElement(tag);if(c)e.className=c;if(x!==undefined)e.textContent=x;return e},kids=[];
+  const head=(x,c)=>{const h=mk('div',c||'hw',x.hw);if(x.i)h.append(mk('span','ipa',x.i));return h};
+  const body=x=>{
+    if(x.p&&x.p.length)kids.push(mk('p','pl',x.p.map(z=>POSN[z]||z).join(' · ')));
+    x.s.slice(0,12).forEach((s,i,a)=>{const d=mk('p','sn');if(s.p)d.append(mk('i','pos',s.p+' '));else if(a.length>1)d.append(mk('span','num',(i+1)+'. '));d.append(document.createTextNode(s.d||s));kids.push(d)});
+    if(x.y&&x.y.length)kids.push(mk('p','dn','Synonyms: '+x.y.slice(0,6).join(', ')));
+    if(x.n&&x.n.length)kids.push(mk('p','dn','Antonyms: '+x.n.slice(0,5).join(', ')));
+  };
   if(r.miss){
     kids.push(mk('div','hw',r.q||q),mk('p','dn','No entry found for this word.'));
     if(!added.length)kids.push(mk('p','dn','Add a fuller dictionary under Aa, Words, to look up more.'));
   }else{
-    kids.push(mk('div','hw',r.hw));
-    for(const s of r.s.slice(0,12)){const d=mk('p','sn');if(s.p)d.append(mk('i','pos',s.p+' '));d.append(document.createTextNode(s.d||s));kids.push(d)}
+    kids.push(head(r));body(r);
+    if(r.base){kids.push(head({hw:'→ '+r.base.hw,i:r.base.i},'hw base'));body(r.base)}
     kids.push(mk('p','src',r.src||''));
   }
   dbody.replaceChildren(...kids);
@@ -924,9 +968,9 @@ function place(rect){
     card.style.top=(below+h>innerHeight-12?Math.max(12,rect.top-10-h):below)+'px';
   }
 }
-async function showCard(text,rect){
+async function showCard(text,rect,cap){
   if(!card.hidden&&text===lastQ)return;
-  lastQ=text;const my=++seq,r=await define(text);
+  lastQ=text;const my=++seq,r=await define(text,cap);
   if(my!==seq)return;
   paint(r,text);card.hidden=false;place(rect);
 }
@@ -935,7 +979,10 @@ function check(){
   const s=getSelection();if(!s||s.isCollapsed||!s.rangeCount)return;
   const r=s.getRangeAt(0);if(!flow.contains(r.commonAncestorContainer))return;
   const t=s.toString().replace(/\s+/g,' ').trim();
-  if(t&&t.length<=60)showCard(t,r.getBoundingClientRect());
+  if(t&&t.length<=60){
+    const n=r.startContainer,pre=n.nodeType===3?n.nodeValue.slice(0,r.startOffset).trimEnd():'',prev=pre.slice(-1);
+    showCard(t,r.getBoundingClientRect(),/^\p{Lu}/u.test(t)&&!!prev&&!/[.!?:;"“”‘’(\[—–-]/.test(prev));
+  }
 }
 let sc;document.addEventListener('selectionchange',()=>{clearTimeout(sc);sc=setTimeout(()=>{if(sx===null)check()},400)});
 addEventListener('keydown',e=>{if(e.key==='Escape'&&!card.hidden)hideCard()});
@@ -967,41 +1014,108 @@ async function dstore(map,src,onp){
     onp(Math.round((i+part.length)/keys.length*100));await tick();
   }
 }
+async function* lineChunks(f){
+  const td=new TextDecoder();let rest='';
+  for(let o=0;o<f.size;o+=4194304){
+    const end=Math.min(f.size,o+4194304),a=(rest+td.decode(new Uint8Array(await f.slice(o,end).arrayBuffer()),{stream:end<f.size})).split('\n');
+    rest=a.pop();yield{lines:a,done:end};
+  }
+  if(rest)yield{lines:[rest],done:f.size};
+}
+async function sniff(f){
+  const head=await f.slice(0,300000).text(),nl=head.indexOf('\n');
+  if(nl<0)return false;
+  try{const o=JSON.parse(head.slice(0,nl));return !!o&&typeof o==='object'&&!Array.isArray(o)&&('' in o||'word' in o||'headword' in o)&&head.slice(nl+1).trimStart()[0]==='{'}catch(e){return false}
+}
+function recOf(o){
+  const w=['','word','headword'].map(k=>o[k]).find(x=>typeof x==='string'&&x.trim());if(!w)return null;
+  let d=['d','definitions','definition','meaning'].map(k=>o[k]).find(x=>x!==undefined);if(d===undefined)return null;
+  d=(Array.isArray(d)?d:[d]).map(x=>typeof x==='string'?x:x&&(x.d||x.def||x.definition)||'').map(x=>String(x).trim()).filter(Boolean).slice(0,12).map(x=>x.slice(0,500));
+  if(!d.length)return null;
+  const r={w:w.trim(),s:d},list=(a,n)=>Array.isArray(a)?a.filter(x=>typeof x==='string').slice(0,n):[],y=list(o.s,8),n=list(o.n,6);
+  if(Array.isArray(o.p)&&o.p.length)r.p=list(o.p,6);
+  if(typeof o.i==='string')r.i=o.i.slice(0,80);
+  if(y.length)r.y=y;if(n.length)r.n=n;
+  return r;
+}
 async function importDict(fs){
-  const by=re=>fs.find(f=>re.test(f.name.toLowerCase())),ifo=by(/\.ifo$/),idx=by(/\.idx(\.gz)?$/),dz=by(/\.dict(\.dz)?$|\.dz$/),js=by(/\.json$/),tx=by(/\.(tsv|txt|csv)$/),star=ifo&&idx&&dz;
-  if(!star&&!js&&!tx){say('To add a dictionary, choose a StarDict set (.ifo, .idx and .dict.dz together), a .json file, or a tab-separated .tsv file.');return}
+  const by=re=>fs.find(f=>re.test(f.name.toLowerCase())),ifo=by(/\.ifo$/),idx=by(/\.idx(\.gz)?$/),dz=by(/\.dict(\.dz)?$|\.dz$/),js=by(/\.(json|jsonl|ndjson)$/),tx=by(/\.(tsv|txt|csv)$/),star=ifo&&idx&&dz;
+  if(!star&&!js&&!tx){say('To add a dictionary, choose a StarDict set (.ifo, .idx and .dict.dz together), a .json or .jsonl file, or a tab-separated .tsv file.');return}
   if(busy){say('Please wait for the current import to finish.');return}
   const meta={};
   if(star)(await ifo.text()).split(/\r?\n/).forEach(l=>{const i=l.indexOf('=');if(i>0)meta[l.slice(0,i).trim()]=l.slice(i+1).trim()});
   const name=star?(meta.bookname||dz.name.replace(/\.dict.*$/i,'')):(js||tx).name.replace(/\.\w+$/,'');
   if(added.some(d=>d.name===name)){say(`"${name}" is already added. Use Remove added first to import it again.`);return}
-  busy=true;
+  busy=true;const hadAny=added.length>0;
   try{
-    const map=new Map(),put=(w,s)=>{const k=w.toLowerCase().trim();if(!k||!s.length)return;const e=map.get(k);if(e)e.s.push(...s);else map.set(k,{w:w.trim(),s})};
+    let count=0;
     say(`Reading ${name}…`);await tick();
-    if(star){
-      let ib=new Uint8Array(await idx.arrayBuffer());if(/\.gz$/i.test(idx.name))ib=await gunzip(ib);
-      let db=new Uint8Array(await dz.arrayBuffer());if(/\.(dz|gz)$/i.test(dz.name))db=await gunzip(db);
-      const dv=new DataView(ib.buffer,ib.byteOffset,ib.byteLength),td=new TextDecoder(),big=meta.idxoffsetbits==='64';
-      let p=0,n=0;
-      while(p<ib.length){
-        let e=p;while(e<ib.length&&ib[e]!==0)e++;
-        const w=td.decode(ib.subarray(p,e));p=e+1;
-        let o;if(big){o=Number(dv.getBigUint64(p));p+=8}else{o=dv.getUint32(p);p+=4}
-        const len=dv.getUint32(p);p+=4;
-        put(w,sdText(db.subarray(o,o+len),meta.sametypesequence).split(/\n+/).map(x=>x.trim()).filter(Boolean).slice(0,12).map(x=>x.slice(0,600)));
-        if(++n%4000===0){say(`Reading ${name}… ${Math.round(p/ib.length*100)}%`);await tick()}
+    if(!star&&js&&await sniff(js)){
+      // one entry per line: stream it, and save in batches
+      let src=name,buckets=new Map(),held=0;
+      const flushBuckets=async()=>{
+        const all=[...buckets];buckets=new Map();held=0;
+        for(let i=0;i<all.length;i+=400){
+          const part=all.slice(i,i+400);
+          await dbp.then(d=>new Promise((ok,no)=>{
+            const t=d.transaction('wik','readwrite',{durability:'relaxed'}),s=t.objectStore('wik');
+            for(const[k,arr]of part){
+              const q=s.get(k);
+              q.onsuccess=()=>{
+                let e=arr,tag=src;
+                if(q.result){try{const o=JSON.parse(q.result),m=new Map();if(o.src!==src){o.e.forEach(r=>{r.src=r.src||o.src});arr.forEach(r=>{r.src=src});tag=''}o.e.forEach(r=>m.set(r.w,r));arr.forEach(r=>m.set(r.w,r));e=[...m.values()]}catch(x){}}
+                s.put(JSON.stringify({src:tag,e}),k);
+              };
+            }
+            t.oncomplete=ok;t.onerror=t.onabort=()=>no(t.error);
+          }));
+        }
+      };
+      for await(const{lines,done}of lineChunks(js)){
+        for(const l of lines){
+          if(l.length<3)continue;
+          let o;try{o=JSON.parse(l)}catch(e){continue}
+          if(!count&&''in o)src=`${name} · Wiktionary data (CC BY-SA 4.0)`;
+          const r=recOf(o);if(!r)continue;
+          const k=pre(r.w);let a=buckets.get(k);if(!a)buckets.set(k,a=[]);
+          a.push(r);count++;
+          if(++held>=50000)await flushBuckets();
+        }
+        say(`Adding ${name}… ${Math.round(done/js.size*100)}%${js.size>2e7?' (large, so this can take a minute or two; keep Folio open)':''}`);await tick();
       }
-    }else if(js){
-      for(const [w,v] of Object.entries(JSON.parse(await js.text())))put(w,(Array.isArray(v)?v:[v]).map(x=>typeof x==='string'?x:x&&(x.d||x.def||x.definition)||'').filter(Boolean).map(x=>String(x).slice(0,600)));
+      await flushBuckets();
     }else{
-      for(const l of (await tx.text()).split(/\r?\n/)){const i=l.indexOf('\t');if(i>0)put(l.slice(0,i),[l.slice(i+1).trim().slice(0,600)])}
+      const map=new Map(),put=(w,s)=>{const k=w.toLowerCase().trim();if(!k||!s.length)return;const e=map.get(k);if(e)e.s.push(...s);else map.set(k,{w:w.trim(),s})};
+      if(star){
+        let ib=new Uint8Array(await idx.arrayBuffer());if(/\.gz$/i.test(idx.name))ib=await gunzip(ib);
+        let db=new Uint8Array(await dz.arrayBuffer());if(/\.(dz|gz)$/i.test(dz.name))db=await gunzip(db);
+        const dv=new DataView(ib.buffer,ib.byteOffset,ib.byteLength),td=new TextDecoder(),big=meta.idxoffsetbits==='64';
+        let p=0,n=0;
+        while(p<ib.length){
+          let e=p;while(e<ib.length&&ib[e]!==0)e++;
+          const w=td.decode(ib.subarray(p,e));p=e+1;
+          let o;if(big){o=Number(dv.getBigUint64(p));p+=8}else{o=dv.getUint32(p);p+=4}
+          const len=dv.getUint32(p);p+=4;
+          put(w,sdText(db.subarray(o,o+len),meta.sametypesequence).split(/\n+/).map(x=>x.trim()).filter(Boolean).slice(0,12).map(x=>x.slice(0,600)));
+          if(++n%4000===0){say(`Reading ${name}… ${Math.round(p/ib.length*100)}%`);await tick()}
+        }
+      }else if(js){
+        for(const[w,v]of Object.entries(JSON.parse(await js.text())))put(w,(Array.isArray(v)?v:[v]).map(x=>typeof x==='string'?x:x&&(x.d||x.def||x.definition)||'').filter(Boolean).map(x=>String(x).slice(0,600)));
+      }else{
+        for(const l of(await tx.text()).split(/\r?\n/)){const i=l.indexOf('\t');if(i>0)put(l.slice(0,i),[l.slice(i+1).trim().slice(0,600)])}
+      }
+      if(!map.size)throw new Error('empty');
+      await dstore(map,name,pc=>say(`Saving ${name}… ${pc}%`));
+      count=map.size;
     }
-    if(!map.size)throw new Error('empty');
-    await dstore(map,name,pc=>say(`Saving ${name}… ${pc}%`));
-    added.push({name,n:map.size});store.set('folio:dicts',JSON.stringify(added));dinfo();
-    say(`Added dictionary "${name}" with ${map.size.toLocaleString()} words.`);
-  }catch(e){console.error(e);say('That dictionary could not be read. For StarDict, choose the .ifo, .idx and .dict.dz files together.')}
+    if(!count)throw new Error('empty');
+    added.push({name,n:count});bcache.clear();store.set('folio:dicts',JSON.stringify(added));dinfo();
+    say(`Added dictionary "${name}" with ${count.toLocaleString()} words.`);
+  }catch(e){
+    console.error(e);
+    if(!hadAny){bcache.clear();dbp.then(d=>{const t=d.transaction(['dict','wik'],'readwrite');t.objectStore('dict').clear();t.objectStore('wik').clear()}).catch(()=>{})}
+    say(e&&e.name==='QuotaExceededError'?'There is not enough storage left on this device for that dictionary.':'That dictionary could not be read. Folio accepts StarDict sets, .json files of words and definitions, one-entry-per-line .jsonl files, and .tsv files.');
+  }
   busy=false;
 }
 $('#dadd').onclick=()=>$('#dfile').click();
@@ -1009,7 +1123,7 @@ $('#dfile').onchange=e=>{importDict([...e.target.files]);e.target.value=''};
 $('#dclr').onclick=function(){
   if(!this.dataset.sure){this.dataset.sure=1;this.textContent='Tap to confirm';setTimeout(()=>{delete this.dataset.sure;this.textContent='Remove added'},3000);return}
   delete this.dataset.sure;this.textContent='Remove added';
-  dbp.then(d=>new Promise((ok,no)=>{const t=d.transaction('dict','readwrite');t.objectStore('dict').clear();t.oncomplete=ok;t.onerror=t.onabort=()=>no(t.error)})).then(()=>{added=[];store.set('folio:dicts','[]');dinfo();say('Removed the added dictionaries. The built-in starter stays.')},()=>say('Could not remove them.'));
+  dbp.then(d=>new Promise((ok,no)=>{const t=d.transaction(['dict','wik'],'readwrite');t.objectStore('dict').clear();t.objectStore('wik').clear();t.oncomplete=ok;t.onerror=t.onabort=()=>no(t.error)})).then(()=>{bcache.clear();added=[];store.set('folio:dicts','[]');dinfo();say('Removed the added dictionaries. The built-in starter stays.')},()=>say('Could not remove them.'));
 };
 let rt;new ResizeObserver(()=>{clearTimeout(rt);rt=setTimeout(layout,100)}).observe(stage);
 matchMedia('(prefers-color-scheme:dark)').addEventListener('change',()=>{if(S.theme==='auto')apply()});
