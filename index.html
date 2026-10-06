@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self' data:; manifest-src 'self'; worker-src 'self'; connect-src 'none'; base-uri 'none'; form-action 'none'; object-src 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#d8ddda">
 <link rel="manifest" href="manifest.webmanifest">
@@ -9,10 +10,10 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>Folio</title>
 <style>
-:root{--desk:#d8ddda;--page:#fbfbf8;--ink:#1c2227;--mute:#626d76;--acc:#2c6a58;--edge:#c2c9c4;--fs:19px;--ff:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Charter,Georgia,serif;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+:root{--desk:#d8ddda;--page:#fbfbf8;--ink:#1c2227;--mute:#565e66;--acc:#2c6a58;--edge:#c2c9c4;--fs:19px;--ff:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Charter,Georgia,serif;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]):not([data-theme="sepia"]){--desk:#0f1315;--page:#1a2023;--ink:#d4d8d2;--mute:#8a959b;--acc:#7cc3ab;--edge:#2b3337}}
 :root[data-theme="dark"]{--desk:#0f1315;--page:#1a2023;--ink:#d4d8d2;--mute:#8a959b;--acc:#7cc3ab;--edge:#2b3337}
-:root[data-theme="sepia"]{--desk:#c9c2b0;--page:#ebe3cf;--ink:#372f24;--mute:#6f6550;--acc:#45683f;--edge:#d3c9b0}
+:root[data-theme="sepia"]{--desk:#c9c2b0;--page:#ebe3cf;--ink:#372f24;--mute:#544c3b;--acc:#45683f;--edge:#d3c9b0}
 html{scroll-padding-top:env(safe-area-inset-top,0px)}
 html,body{height:100%;margin:0;overscroll-behavior:none}html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 body{background:var(--desk);color:var(--ink);font:15px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;display:flex;flex-direction:column;overflow:hidden;-webkit-tap-highlight-color:transparent}
@@ -66,13 +67,13 @@ body.drag #stage{outline:2px dashed var(--acc);outline-offset:-10px}
 .act button:hover{color:var(--ink);text-decoration:underline}
 .ren{flex:1 1 220px;min-width:0;font:inherit;padding:.6em .7em;margin:6px 0;border:1px solid var(--acc);border-radius:8px;background:var(--page);color:var(--ink)}
 .note{color:var(--mute);font-size:.85em;line-height:1.5;margin:18px 8px 0}
-#flow .ch{break-before:column;margin-top:0}
+#flow .ch{-webkit-column-break-before:always;break-before:column;margin-top:0}
 #menu{max-width:calc(100vw - 28px)}
 #menu .row{flex-wrap:wrap}
 #dinfo{margin:0;color:var(--mute);font-size:.82em;line-height:1.45;max-width:20em}
-#dict{position:fixed;z-index:6;box-sizing:border-box;background:var(--page);color:var(--ink);border:1px solid var(--edge);border-radius:12px;box-shadow:0 14px 36px rgba(0,0,0,.24);padding:14px 40px 12px 16px;max-height:42vh;overflow:auto;font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+#dict{position:fixed;z-index:6;box-sizing:border-box;background:var(--page);color:var(--ink);border:1px solid var(--edge);border-radius:12px;box-shadow:0 14px 36px rgba(0,0,0,.24);padding:14px 48px 12px 16px;max-height:42vh;overflow:auto;font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
 #dict[hidden]{display:none}
-#dx{position:absolute;top:6px;right:8px;border:0;font-size:1.4em;line-height:1;color:var(--mute);padding:.1em .3em}
+#dx{position:absolute;top:0;right:2px;min-width:44px;min-height:44px;border:0;font-size:1.5em;line-height:1;color:var(--mute);padding:0}
 #dict .hw{font:600 1.3em/1.2 var(--ff);margin-bottom:.35em}
 #dict .sn{margin:.35em 0 0}
 #dict .pos{color:var(--acc);font-size:.88em}
@@ -82,6 +83,12 @@ body.drag #stage{outline:2px dashed var(--acc);outline-offset:-10px}
 #dict .pl{margin:0 0 .2em;color:var(--acc);font-size:.88em;font-style:italic}
 #dict .num{color:var(--mute)}
 #dict .base{font-size:1.08em;margin:.9em 0 .35em;padding-top:.6em;border-top:1px solid var(--edge)}
+#bkrow{margin-top:6px}
+#bkrow .note{margin:6px 8px 0}
+.bkbtns{display:flex;gap:8px;flex-wrap:wrap;margin:10px 8px 0}
+#bkdl{display:block;margin:10px 8px 0;color:var(--mute);font-size:.88em}
+#bkdl[hidden]{display:none}
+#bkdl input{margin-right:.5em;accent-color:var(--acc)}
 </style>
 </head>
 <body class="shelf">
@@ -97,14 +104,16 @@ body.drag #stage{outline:2px dashed var(--acc);outline-offset:-10px}
 <main id="stage">
 <div id="shelf">
 <div id="drop"><h1>Read PDFs and EPUBs like a book</h1><p>Each file's text is set into pages that fit your screen. Add as many as you like: they are kept in a library on this device, so you can pick each one up where you left off. Nothing is uploaded. While reading, select a word to see its meaning. You can also drop files anywhere on this page.</p><button id="pick">Add books</button></div>
-<div id="lib" hidden><ul id="books"></ul><p class="note">Your library is stored on this device only. Clearing this site's data in your browser removes it, so keep your original PDFs.</p></div>
+<div id="lib" hidden><ul id="books"></ul><p class="note">Your library is stored on this device only. Clearing this site's data in your browser removes it, so save a backup now and then.</p></div>
 <p id="extra"><button id="inst" hidden>Install app</button></p>
+<div id="bkrow"><p id="bkinfo" class="note"></p><p class="bkbtns"><button id="bksave">Save backup</button><button id="bkrest">Restore backup</button></p><label id="bkdl" hidden><input type="checkbox" id="bkd"> Include added dictionaries (large)</label></div>
 </div>
 <div id="sheet" hidden><div id="book"><div id="flow"></div></div></div>
 </main>
 <footer id="foot"><input id="scrub" type="range" min="1" max="1" value="1" aria-label="Go to page" disabled><span id="pg"></span></footer>
 <input id="file" type="file" accept="application/pdf,.pdf,application/epub+zip,.epub" multiple hidden>
 <input id="dfile" type="file" multiple hidden>
+<input id="rfile" type="file" hidden>
 <aside id="dict" hidden aria-live="polite"><button id="dx" aria-label="Close definition">×</button><div id="dbody"></div></aside>
 <script>(function(){"use strict";/**
  * @licstart The following is the entire license notice for the
@@ -165,10 +174,11 @@ t)).default()}catch(e){warn(`JpxImage#getJsModule: ${e}`)}e(n)}static async#E(e,
 <script>
 (()=>{
 const $=s=>document.querySelector(s),root=document.documentElement,stage=$('#stage'),sheet=$('#sheet'),book=$('#book'),flow=$('#flow'),scrub=$('#scrub'),msg=$('#msg'),menu=$('#menu'),card=$('#dict'),dbody=$('#dbody');
-const SANS='system-ui,-apple-system,"Segoe UI",Roboto,sans-serif',END=/[.!?:;”"’')\]]$/;
+const SANS='system-ui,-apple-system,"Segoe UI",Roboto,sans-serif',END=/[.!?:;”"’')\]。！？」』）…]$/,CJK=/[\u3040-\u30ff\u3400-\u9fff\uf900-\ufaff]/;
 const store={get:k=>{try{return localStorage.getItem(k)}catch(e){return null}},set:(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}}};
 const S={size:innerWidth<700?17:19,face:'serif',theme:'auto'};
 try{Object.assign(S,JSON.parse(store.get('folio:set')||'{}'))}catch(e){}
+S.size=Number.isFinite(+S.size)?+S.size:19;if(!['serif','sans'].includes(S.face))S.face='serif';if(!['auto','light','sepia','dark'].includes(S.theme))S.theme='auto';
 let lib=[],cur=null,busy=false,blocks=null,cols=1,step=0,total=1,pages=1,idx=0,prog=0;
 root.lang=navigator.language||'en';
 const say=t=>{$('#status').textContent=t||''},closeMenu=()=>{menu.hidden=true;$('#aa').setAttribute('aria-expanded','false')};
@@ -192,7 +202,7 @@ function go(i,anim=true,keep=false){if(!keep)hideCard();
   flow.style.transform=`translateX(${-idx*step}px)`;
   const a=idx*cols+1,b=Math.min(pages,a+cols-1);
   $('#pg').textContent=(b>a?a+'–'+b:a)+' of '+pages;
-  scrub.max=total;scrub.value=idx+1;scrub.disabled=total<2;
+  scrub.max=total;scrub.value=idx+1;scrub.disabled=total<2;scrub.setAttribute('aria-valuetext','Page '+$('#pg').textContent);
   // the stack of page edges on each side shows how far through the book you are
   const f=total>1?idx/(total-1):0,L=Math.round(f*7),R=Math.round((1-f)*7),s=[];
   for(let k=1;k<=R;k++)s.push(`${k}px ${k}px 0 var(${k%2?'--edge':'--page'})`);
@@ -203,7 +213,7 @@ function go(i,anim=true,keep=false){if(!keep)hideCard();
 
 function layout(){
   if(!blocks)return;
-  const aw=stage.clientWidth,ah=stage.clientHeight,small=aw<700;
+  const aw=stage.clientWidth,ah=stage.clientHeight,small=aw<700;if(aw<120||ah<200)return;
   cols=aw>=980&&ah>=500?2:1;
   const m=small?8:18,px=small?20:46,py=small?22:38;
   const sw=Math.min(aw-2*m,cols===2?1240:660),sh=ah-2*m-8;
@@ -220,7 +230,7 @@ function layout(){
 
 function draw(){
   const fr=document.createDocumentFragment();
-  blocks.forEach((b,i)=>{const e=document.createElement(b.hd?'h2':'p');e.textContent=b.t;if(!b.hd&&(i===0||blocks[i-1].hd))e.className='f';if(b.ch&&i)e.className='ch';fr.appendChild(e)});
+  blocks.forEach((b,i)=>{const e=document.createElement(b.hd?'h2':'p');e.textContent=b.t;e.dir='auto';if(!b.hd&&(i===0||blocks[i-1].hd))e.className='f';if(b.ch&&i)e.className='ch';fr.appendChild(e)});
   flow.replaceChildren(fr);
 }
 
@@ -235,11 +245,13 @@ async function read(pdf,label=''){
       if(it.str===undefined)continue;
       const h=it.height||Math.abs(it.transform[3])||10,x=it.transform[4],y=it.transform[5];
       if(it.str===''){if(it.hasEOL)cur=null;continue}
-      if(!cur||Math.abs(y-cur.y)>h*.5){cur={y,x,e:x,h,t:'',m:y>v[1]+H*.93||y<v[1]+H*.07};lines.push(cur)}
+      if(!cur||Math.abs(y-cur.y)>Math.max(h,cur.h)*.5){const rel=(y-v[1])/H;cur={y,x,e:x,h,t:'',sz:{},rel,m:rel>.93||rel<.07};lines.push(cur)}
       else if(x-cur.e>h*.18&&!/\s$/.test(cur.t)&&!/^\s/.test(it.str))cur.t+=' ';
       cur.t+=it.str;cur.e=x+it.width;cur.h=Math.max(cur.h,h);
+      const k=Math.round(h*2)/2;cur.sz[k]=(cur.sz[k]||0)+it.str.length;
       if(it.hasEOL)cur=null;
     }
+    for(const l of lines){let b=-1;for(const k in l.sz)if(l.sz[k]>b){b=l.sz[k];l.d=+k}if(b<0)l.d=l.h}   // d = the size most of the line is set in
     pl.push(lines);
     await tick();
   }
@@ -247,39 +259,61 @@ async function read(pdf,label=''){
   const cnt={},nk=l=>l.t.replace(/\d+/g,'#').trim().toLowerCase(),lim=Math.max(3,N*.3);
   pl.forEach(ls=>ls.forEach(l=>{if(l.m){const k=nk(l);cnt[k]=(cnt[k]||0)+1}}));
   pl.forEach((ls,i)=>pl[i]=ls.filter(l=>!(l.m&&(cnt[nk(l)]>=lim||/^\s*(page\s*)?[\divxlc]{1,6}\s*$/i.test(l.t)))));
-  // body text size = the size most characters are set in
-  const w={};pl.forEach(ls=>ls.forEach(l=>{const s=Math.round(l.h);w[s]=(w[s]||0)+l.t.length}));
-  const body=+Object.keys(w).sort((a,b)=>w[b]-w[a])[0]||10;
-  const out=[];let last=null;
+  // body text size = the size most characters are set in; typical gap between two body lines
+  const w={};pl.forEach(ls=>ls.forEach(l=>{const s=Math.round(l.d);w[s]=(w[s]||0)+l.t.length}));
+  const body=+Object.keys(w).sort((a,b)=>w[b]-w[a])[0]||10,G={},lead={};
+  for(const ls of pl)for(let i=1;i<ls.length;i++){const a=ls[i-1],b=ls[i],g=a.y-b.y,s=Math.round(a.d);if(g>0&&g<a.d*3&&s===Math.round(b.d))(G[s]||(G[s]=[])).push(g)}
+  // "leading" = the usual distance between two lines of the same paragraph (a low percentile, so paragraph gaps do not pull it up)
+  for(const s in G)if(G[s].length>=6){const a=G[s].sort((x,y)=>x-y);lead[s]=a[Math.floor(a.length*.3)]}
+  const leadOf=l=>lead[Math.round(l.d)]||(lead[body]||body*1.25)*l.d/body;
+  const ends=s=>END.test(s.replace(/[\s\d*†‡]+$/,''));
+  // words seen in the middle of lines: decides whether a hyphen at a line end belongs to the word (well-known) or is only a break (extra-ordinary)
+  const tokOf=s=>s.toLowerCase().replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu,''),seen=new Set();
+  for(const ls of pl)for(const l of ls){const a=l.t.split(/\s+/);a.forEach((x,i)=>{if(i===a.length-1&&/[-\u00AD]$/.test(x))return;const k=tokOf(x);if(k.length>2)seen.add(k)})}
+  const join=(a,b)=>{
+    const m=/(\S*)[-\u00AD]$/.exec(a);
+    if(m&&/^\p{Ll}/u.test(b)){
+      const nb=/^[\p{L}'’]+/u.exec(b),soft=a.endsWith('\u00AD');
+      return !soft&&nb&&seen.has(tokOf(m[1]+'-'+nb[0]))&&!seen.has(tokOf(m[1]+nb[0]))?a+b:a.slice(0,-1)+b;
+    }
+    return CJK.test(a.slice(-1))&&CJK.test(b[0])?a+b:a+' '+b;
+  };
+  const norm=s=>s.replace(/[\uFB00-\uFB06]/g,c=>c.normalize('NFKC')).replace(/\s+/g,' ').trim();
+  const out=[],pend=[],isFoot=l=>l.d<body*.88&&l.rel<.35;let last=null;
   for(const lines of pl){
-    const lm=Math.min(...lines.map(l=>l.x)),mw=Math.max(...lines.map(l=>l.e-l.x));
+    const main=lines.filter(l=>!isFoot(l)),foot=lines.filter(isFoot),lm=Math.min(...main.map(l=>l.x)),mw=Math.max(...main.map(l=>l.e-l.x));
     let pv=null;
-    for(const l of lines){
-      const t=l.t.replace(/[\uFB00-\uFB06]/g,c=>c.normalize('NFKC')).replace(/\s+/g,' ').trim();
+    for(const l of main){
+      const t=norm(l.t);
       if(!t)continue;
-      const hd=l.h>body*1.17&&t.length<150;
+      const hd=l.d>body*1.1&&t.length<150;
       let br;
       if(!last)br=true;
       else if(hd!==last.hd)br=true;
-      else if(hd)br=pv?pv.y-l.y>l.h*1.9:true;
-      else if(pv)br=pv.y-l.y>l.h*1.8||(l.x-lm>l.h*.9&&END.test(last.t))||(pv.e-pv.x<mw*.72&&END.test(last.t));
-      else br=END.test(last.t);
-      if(br)out.push(last={hd,t});
-      else last.t=/[-\u00AD]$/.test(last.t)&&/^[a-z]/.test(t)?last.t.slice(0,-1)+t:last.t+' '+t;
+      else if(hd)br=pv?pv.y-l.y>l.d*1.9:true;
+      else if(pv&&l.y>pv.y+l.d*2)br=ends(last.t);
+      else if(pv)br=pv.y-l.y>Math.max(leadOf(l)*1.25,l.d*1.3)||(l.x-lm>l.d*.9&&ends(last.t))||(pv.e-pv.x<mw*.72&&ends(last.t));
+      else br=ends(last.t);
+      if(br){if(pend.length)out.push(...pend.splice(0));out.push(last={hd,t})}
+      else last.t=join(last.t,t);
       pv=l;
     }
+    // footnotes: kept, but placed after the paragraph they were cited in rather than in the middle of it
+    let f=null;
+    for(const l of foot){const t=norm(l.t).replace(/^([\d*†‡]{1,3})(?=\p{L})/u,'$1 ');if(!t)continue;if(!f||/^[\d*†‡]/.test(t)){f={hd:false,t};pend.push(f)}else f.t=join(f.t,t)}
   }
+  out.push(...pend);
   return out;
 }
 
 // Library: lives in this browser's IndexedDB on this device and is never sent anywhere.
-const dbp=new Promise((ok,no)=>{const r=indexedDB.open('folio',3);r.onupgradeneeded=()=>{const d=r.result,has=n=>d.objectStoreNames.contains(n);if(!has('books'))d.createObjectStore('books',{keyPath:'id',autoIncrement:true});if(!has('text'))d.createObjectStore('text');if(!has('dict'))d.createObjectStore('dict');if(!has('wik'))d.createObjectStore('wik')};r.onblocked=()=>say('Close any other open Folio window to finish updating.');r.onsuccess=()=>{r.result.onversionchange=()=>r.result.close();ok(r.result)};r.onerror=()=>no(r.error)});
+const dbp=new Promise((ok,no)=>{const r=indexedDB.open('folio',3);r.onupgradeneeded=()=>{const d=r.result,has=n=>d.objectStoreNames.contains(n);if(!has('books'))d.createObjectStore('books',{keyPath:'id',autoIncrement:true});if(!has('text'))d.createObjectStore('text');if(!has('dict'))d.createObjectStore('dict');if(!has('wik'))d.createObjectStore('wik')};r.onblocked=()=>say('Close any other open Folio window to finish updating.');r.onsuccess=()=>{r.result.onversionchange=()=>{r.result.close();say('Folio was updated in another window. Reload this page to keep using it.')};ok(r.result)};r.onerror=()=>no(r.error)});
 dbp.catch(()=>say('This browser is blocking local storage, so your library cannot be saved. Private windows often do this.'));
 const idb=fn=>dbp.then(d=>new Promise((ok,no)=>{const t=d.transaction(['books','text'],'readwrite'),r=fn(t.objectStore('books'),t.objectStore('text'));t.oncomplete=()=>ok(r instanceof IDBRequest?r.result:r);t.onerror=t.onabort=()=>no(t.error)}));
 let sv;
 const flush=()=>{clearTimeout(sv);const c=cur;if(c)idb(b=>b.put(c)).catch(()=>{})};
 const saveSoon=()=>{clearTimeout(sv);sv=setTimeout(flush,600)};
-const why=e=>{const n=e&&e.name,m=e&&e.message;return n==='PasswordException'?'password-protected.':m==='empty'?'no text found (scanned pages need OCR).':m==='noimg'?'no readable text found (it may be image-only).':m==='drm'?'protected by DRM, which Folio cannot open.':m==='zip'?'not a valid EPUB file.':n==='QuotaExceededError'?'not enough storage left on this device.':'could not be read.'};
+const why=e=>{const n=e&&e.name,m=e&&e.message;return n==='PasswordException'?'password-protected. Remove the password, then add it again.':m==='empty'?'no text found (scanned pages need OCR).':m==='noimg'?'no readable text found (it may be image-only).':m==='drm'?'protected by DRM, which Folio cannot open.':m==='zip'?'not a valid EPUB file.':n==='QuotaExceededError'?'not enough storage left on this device.':'could not be read.'};
 
 async function extractPdf(f,label,u){
   const pdf=await pdfjsLib.getDocument({data:u,isEvalSupported:false,disableFontFace:true,useWorkerFetch:false}).promise;
@@ -318,7 +352,10 @@ async function zipRead(u,z,name){
   const o=f.o,s=o+30+z.dv.getUint16(o+26,true)+z.dv.getUint16(o+28,true),raw=u.subarray(s,s+f.c);
   if(f.m===0)return raw;
   if(f.m!==8)throw new Error('zip');
-  return new Uint8Array(await new Response(new Blob([raw]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer());
+  const rd=new Blob([raw]).stream().pipeThrough(new DecompressionStream('deflate-raw')).getReader(),parts=[];let tot=0;
+  for(;;){const{done,value}=await rd.read();if(done)break;tot+=value.length;if(tot>8e7){rd.cancel();throw new Error('zip')}parts.push(value)}
+  const out=new Uint8Array(tot);let at=0;for(const v of parts){out.set(v,at);at+=v.length}
+  return out;
 }
 function epubText(root,out){
   let buf='';
@@ -348,7 +385,7 @@ async function extractEpub(label,u){
   if(!ot)throw new Error('zip');
   const opf=xml(ot);if(opf.getElementsByTagName('parsererror').length)throw new Error('zip');
   const man={};qs(opf,'item').forEach(i=>man[i.getAttribute('id')]=i);
-  const res=h=>decodeURIComponent(new URL(h,'file:///'+opfPath).pathname).slice(1);
+  const res=h=>{const q=new URL(h||'x','file:///'+opfPath).pathname;try{return decodeURIComponent(q).slice(1)}catch(e){return q.slice(1)}};
   const spine=qs(opf,'itemref').map(r=>man[r.getAttribute('idref')]).filter(i=>i&&(!i.getAttribute('media-type')||/html|xml/.test(i.getAttribute('media-type'))));
   const one=n=>{const e=qs(opf,n)[0];return e?e.textContent.replace(/\s+/g,' ').trim():''};
   const out=[];
@@ -364,7 +401,8 @@ async function extractEpub(label,u){
   }
   const words=out.reduce((n,x)=>n+(x.t.match(/\S+/g)||[]).length,0);
   if(words<20)throw new Error('noimg');
-  return{blocks:out,words,title:one('title'),author:one('creator')};
+  const lg=one('language');
+  return{blocks:out,words,title:one('title'),author:one('creator'),lang:/^[a-z]{2,3}(-[a-z0-9]{2,8})*$/i.test(lg)?lg:''};
 }
 async function extract(f,label){
   const u=new Uint8Array(await f.arrayBuffer());
@@ -380,10 +418,11 @@ async function refresh(){
   $('#books').replaceChildren(...lib.map(b=>{
     const pc=Math.round((b.pct||0)*100),li=mk('li'),o=mk('button','bk'),pr=mk('span','pr'),i=mk('i'),a=mk('div','act');
     li.dataset.id=b.id;o.dataset.a='open';i.style.width=pc+'%';pr.append(i);
-    o.append(mk('span','nm',b.name),mk('span','meta',`${b.author?b.author+' · ':''}${pc}% read · ${b.words.toLocaleString()} words`),pr);
+    o.append(mk('span','nm',b.name||'Untitled'),mk('span','meta',`${b.author?b.author+' · ':''}${pc}% read · ${(b.words||0).toLocaleString()} words`),pr);
     for(const x of ['rename','remove']){const k=mk('button','',x==='rename'?'Rename':'Remove');k.dataset.a=x;a.append(k)}
     li.append(o,a);return li;
   }));
+  bkInfo();
 }
 
 function rename(li,b){
@@ -410,7 +449,7 @@ async function openBook(id){
   let b=null;try{b=await idb((bk,x)=>x.get(id))}catch(e){}
   if(!Array.isArray(b)){say('That book could not be loaded. Remove it and add the PDF again.');return}
   say('');blocks=b;cur=m;m.opened=Date.now();saveSoon();
-  $('#title').textContent=m.name;$('#open').textContent='Library';closeMenu();
+  $('#title').textContent=m.name;$('#open').textContent='Library';closeMenu();if(m.lang)flow.setAttribute('lang',m.lang);else flow.removeAttribute('lang');
   $('#shelf').hidden=true;sheet.hidden=false;document.body.classList.remove('shelf','calm');
   if(!(history.state&&history.state.r))history.pushState({r:1},'');
   draw();prog=m.pct||0;layout();
@@ -425,11 +464,12 @@ function toShelf(){
 
 // One PDF opens straight away; several are added to the library.
 async function addFiles(files){
+  {const all=[...files],bk=all.find(f=>/\.jsonl(\.gz)?$/i.test(f.name));if(bk&&!all.some(f=>/\.(pdf|epub)$/i.test(f.name))){restoreBackup(bk);return}}
   const fs=[...files].filter(f=>/\.(pdf|epub)$/i.test(f.name)||/^application\/(pdf|epub\+zip)$/.test(f.type));
   if(!fs.length){say('Choose PDF or EPUB files to add.');return}
   if(busy){say('Still adding the last files. Try again in a moment.');return}
-  if(!await dbp.then(()=>1,()=>0)){say('This browser is blocking local storage, so books cannot be added. Private windows often do this.');return}
   busy=true;
+  if(!await dbp.then(()=>1,()=>0)){busy=false;say('This browser is blocking local storage, so books cannot be added. Private windows often do this.');return}
   let have=[];try{have=await idb(b=>b.getAll())}catch(e){}
   let last=null,added=0,dup=0;const bad=[];
   for(let i=0;i<fs.length;i++){
@@ -437,7 +477,7 @@ async function addFiles(files){
     if(old){last=old;dup++;continue}
     try{
       say(pre+'Opening…');
-      const r=await extract(f,pre),m={name:(r.title||f.name.replace(/\.(pdf|epub)$/i,'').replace(/_+/g,' ')).trim()||'Untitled',author:r.author||'',sig,words:r.words,pct:0,added:Date.now(),opened:Date.now()};
+      const r=await extract(f,pre),m={name:(r.title||f.name.replace(/\.(pdf|epub)$/i,'').replace(/_+/g,' ')).trim()||'Untitled',author:r.author||'',lang:r.lang||'',sig,words:r.words,pct:0,added:Date.now(),opened:Date.now()};
       m.id=await idb((b,x)=>{const q=b.add(m);q.onsuccess=()=>x.put(r.blocks,q.result);return q});
       have.push(m);last=m;added++;
     }catch(e){console.error(e);bad.push(f.name+': '+why(e))}
@@ -464,7 +504,7 @@ menu.onclick=e=>{
 };
 scrub.oninput=()=>go(scrub.value-1);
 addEventListener('keydown',e=>{
-  if(!blocks||e.target===scrub)return;
+  if(!blocks||e.target===scrub||e.ctrlKey||e.metaKey||e.altKey)return;
   const k=e.key;
   if(k===' '&&e.target.closest('button'))return;
   if(k==='ArrowRight'||k==='PageDown'||(k===' '&&!e.shiftKey))go(idx+1);
@@ -479,6 +519,7 @@ stage.addEventListener('pointerdown',e=>{clearTimeout(tp);sx=e.clientX;sy=e.clie
 stage.addEventListener('pointercancel',()=>{sx=null;setTimeout(check,120)});
 stage.addEventListener('pointerup',e=>{
   if(!blocks||sx===null)return;
+  if(e.pointerType==='mouse'&&e.button!==0){sx=null;return}
   const dx=e.clientX-sx,dy=e.clientY-sy,long=Date.now()-t0>350;sx=null;
   if(!menu.hidden){closeMenu();return}
   if(was){hideCard();return}
@@ -486,10 +527,11 @@ stage.addEventListener('pointerup',e=>{
   if(sel&&!sel.isCollapsed&&sel.toString().trim()){setTimeout(check,60);return}
   if(e.pointerType!=='mouse'&&Math.abs(dx)>50&&Math.abs(dx)>Math.abs(dy)*1.5)go(idx+(dx<0?1:-1));
   else if(!long&&Math.abs(dx)<10&&Math.abs(dy)<10){
-    const r=stage.getBoundingClientRect(),f=(e.clientX-r.left)/r.width,act=()=>{if(getSelection().toString().trim())return;if(f<.3)go(idx-1);else if(f>.7)go(idx+1);else document.body.classList.toggle('calm')};
+    const r=stage.getBoundingClientRect(),f=(e.clientX-r.left)/r.width,act=()=>{if((getSelection()||'').toString().trim())return;if(f<.3)go(idx-1);else if(f>.7)go(idx+1);else document.body.classList.toggle('calm')};
     e.pointerType==='mouse'?tp=setTimeout(act,260):act();
   }
 });
+document.addEventListener('pointerdown',e=>{if(!blocks&&!menu.hidden&&!menu.contains(e.target)&&!$('#aa').contains(e.target))closeMenu()});
 addEventListener('dragover',e=>{e.preventDefault();document.body.classList.add('drag')});
 addEventListener('dragleave',e=>{if(!e.relatedTarget)document.body.classList.remove('drag')});
 addEventListener('drop',e=>{e.preventDefault();document.body.classList.remove('drag');addFiles(e.dataTransfer.files)});
@@ -889,22 +931,23 @@ function forms(w){
   return out;
 }
 let added=[];try{added=JSON.parse(store.get('folio:dicts')||'[]')}catch(e){}
-const dinfo=()=>{$('#dinfo').textContent=`Built in: ${starter.size} words (starter). Added: ${added.length?added.map(d=>`${d.name} (${d.n.toLocaleString()})`).join(', '):'none'}.`};
+const dinfo=()=>{bkInfo();$('#dinfo').textContent=`Built in: ${starter.size} words (starter). Added: ${added.length?added.map(d=>`${d.name}: ${d.n.toLocaleString()} ${d.n===1?'word':'words'}`).join('; '):'none'}.`};
 const bcache=new Map(),pre=w=>w.slice(0,3);
 const dmany=keys=>dbp.then(d=>new Promise(ok=>{
   try{
     const t=d.transaction(['dict','wik']),s1=t.objectStore('dict'),s2=t.objectStore('wik'),r1=keys.map(k=>s1.get(k)),
       r2=new Map([...new Set(keys.map(pre))].filter(x=>!bcache.has(x)).map(x=>[x,s2.get(x)]));
-    t.oncomplete=()=>ok(keys.map((k,i)=>{
-      if(r1[i].result)return r1[i].result;
+    t.oncomplete=()=>{try{ok(keys.map((k,i)=>{
+      if(r1[i].result&&Array.isArray(r1[i].result.s))return r1[i].result;
       const x=pre(k);let o=bcache.get(x);
       if(!o){
         const v=r2.has(x)?r2.get(x).result:null;
         try{o=v?JSON.parse(v):{e:[]}}catch(e){o={e:[]}}
-        o.m=new Map(o.e.map(r=>[r.w,r]));bcache.set(x,o);if(bcache.size>10)bcache.delete(bcache.keys().next().value);
+        if(!o||!Array.isArray(o.e))o={e:[]};
+        o.m=new Map(o.e.filter(r=>r&&typeof r.w==='string').map(r=>[r.w,r]));bcache.set(x,o);if(bcache.size>10)bcache.delete(bcache.keys().next().value);
       }
-      const r=o.m.get(k);return r?{...r,src:r.src||o.src}:null;
-    }));
+      const r=o.m.get(k);return r&&Array.isArray(r.s)?{...r,src:r.src||o.src}:null;
+    }))}catch(e){ok(keys.map(()=>null))}};
     t.onerror=t.onabort=()=>ok(keys.map(()=>null));
   }catch(e){ok(keys.map(()=>null))}
 })).catch(()=>keys.map(()=>null));
@@ -980,12 +1023,12 @@ function check(){
   const r=s.getRangeAt(0);if(!flow.contains(r.commonAncestorContainer))return;
   const t=s.toString().replace(/\s+/g,' ').trim();
   if(t&&t.length<=60){
-    const n=r.startContainer,pre=n.nodeType===3?n.nodeValue.slice(0,r.startOffset).trimEnd():'',prev=pre.slice(-1);
+    const n=r.startContainer,before=n.nodeType===3?n.nodeValue.slice(0,r.startOffset).trimEnd():'',prev=before.slice(-1);
     showCard(t,r.getBoundingClientRect(),/^\p{Lu}/u.test(t)&&!!prev&&!/[.!?:;"“”‘’(\[—–-]/.test(prev));
   }
 }
 let sc;document.addEventListener('selectionchange',()=>{clearTimeout(sc);sc=setTimeout(()=>{if(sx===null)check()},400)});
-addEventListener('keydown',e=>{if(e.key==='Escape'&&!card.hidden)hideCard()});
+addEventListener('keydown',e=>{if(e.key!=='Escape')return;if(!card.hidden)hideCard();else if(!menu.hidden)closeMenu()});
 $('#dx').onclick=hideCard;
 
 // Adding a full dictionary: StarDict sets (.ifo + .idx + .dict/.dict.dz), .json, or tab-separated .tsv
@@ -1039,14 +1082,18 @@ function recOf(o){
   return r;
 }
 async function importDict(fs){
+  if(busy){say('Please wait for the current import to finish.');return}
+  busy=true;try{await importDict2(fs)}finally{busy=false}
+}
+async function importDict2(fs){
   const by=re=>fs.find(f=>re.test(f.name.toLowerCase())),ifo=by(/\.ifo$/),idx=by(/\.idx(\.gz)?$/),dz=by(/\.dict(\.dz)?$|\.dz$/),js=by(/\.(json|jsonl|ndjson)$/),tx=by(/\.(tsv|txt|csv)$/),star=ifo&&idx&&dz;
   if(!star&&!js&&!tx){say('To add a dictionary, choose a StarDict set (.ifo, .idx and .dict.dz together), a .json or .jsonl file, or a tab-separated .tsv file.');return}
-  if(busy){say('Please wait for the current import to finish.');return}
   const meta={};
   if(star)(await ifo.text()).split(/\r?\n/).forEach(l=>{const i=l.indexOf('=');if(i>0)meta[l.slice(0,i).trim()]=l.slice(i+1).trim()});
-  const name=star?(meta.bookname||dz.name.replace(/\.dict.*$/i,'')):(js||tx).name.replace(/\.\w+$/,'');
-  if(added.some(d=>d.name===name)){say(`"${name}" is already added. Use Remove added first to import it again.`);return}
-  busy=true;const hadAny=added.length>0;
+  const base=star?(meta.bookname||dz.name.replace(/\.dict.*$/i,'')):(js||tx).name.replace(/\.\w+$/,''),size=star?idx.size+dz.size:(js||tx).size;
+  if(added.some(d=>d.name===base&&d.size===size)){say(`"${base}" is already added. Use Remove added first to import it again.`);return}
+  let name=base,k2=2;while(added.some(d=>d.name===name))name=`${base} (${k2++})`;
+  const hadAny=added.length>0;
   try{
     let count=0;
     say(`Reading ${name}…`);await tick();
@@ -1109,14 +1156,13 @@ async function importDict(fs){
       count=map.size;
     }
     if(!count)throw new Error('empty');
-    added.push({name,n:count});bcache.clear();store.set('folio:dicts',JSON.stringify(added));dinfo();
-    say(`Added dictionary "${name}" with ${count.toLocaleString()} words.`);
+    added.push({name,n:count,size});bcache.clear();store.set('folio:dicts',JSON.stringify(added));dinfo();
+    say(`Added dictionary "${name}" with ${count.toLocaleString()} ${count===1?'word':'words'}.`);
   }catch(e){
     console.error(e);
     if(!hadAny){bcache.clear();dbp.then(d=>{const t=d.transaction(['dict','wik'],'readwrite');t.objectStore('dict').clear();t.objectStore('wik').clear()}).catch(()=>{})}
     say(e&&e.name==='QuotaExceededError'?'There is not enough storage left on this device for that dictionary.':'That dictionary could not be read. Folio accepts StarDict sets, .json files of words and definitions, one-entry-per-line .jsonl files, and .tsv files.');
   }
-  busy=false;
 }
 $('#dadd').onclick=()=>$('#dfile').click();
 $('#dfile').onchange=e=>{importDict([...e.target.files]);e.target.value=''};
@@ -1125,6 +1171,129 @@ $('#dclr').onclick=function(){
   delete this.dataset.sure;this.textContent='Remove added';
   dbp.then(d=>new Promise((ok,no)=>{const t=d.transaction(['dict','wik'],'readwrite');t.objectStore('dict').clear();t.objectStore('wik').clear();t.oncomplete=ok;t.onerror=t.onabort=()=>no(t.error)})).then(()=>{bcache.clear();added=[];store.set('folio:dicts','[]');dinfo();say('Removed the added dictionaries. The built-in starter stays.')},()=>say('Could not remove them.'));
 };
+// ---- Backup and restore: one file with your books, reading places and (if you choose) added dictionaries ----
+const BK=1,fmt=n=>n<1e6?Math.max(1,Math.round(n/1e3))+' KB':(n/1e6).toFixed(1)+' MB';
+function bkInfo(){
+  let b=null;try{b=JSON.parse(store.get('folio:lastbackup')||'null')}catch(e){}
+  const any=lib.length>0||added.length>0;
+  $('#bkinfo').textContent=any?(b&&b.t?`Last backup: ${new Date(b.t).toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'})}.`:'You have not saved a backup yet.'):'';
+  $('#bksave').hidden=!any;$('#bkdl').hidden=!added.length;
+}
+const pageOf=(st,range,n)=>dbp.then(d=>new Promise((ok,no)=>{const t=d.transaction(st),s=t.objectStore(st),k=s.getAllKeys(range,n),v=s.getAll(range,n);t.oncomplete=()=>ok([k.result,v.result]);t.onerror=t.onabort=()=>no(t.error)}));
+const countOf=st=>dbp.then(d=>new Promise(ok=>{const q=d.transaction(st).objectStore(st).count();q.onsuccess=()=>ok(q.result);q.onerror=()=>ok(0)}));
+async function* backupLines(withDict,step){
+  const books=(await idb(b=>b.getAll()))||[];
+  yield JSON.stringify({folio:BK,created:new Date().toISOString(),books:books.length,dicts:withDict?added:[]})+'\n';
+  for(const m of books){
+    const x=await idb((b,t)=>t.get(m.id));if(!Array.isArray(x))continue;
+    const{id,...meta}=m;
+    yield JSON.stringify({t:'book',m:meta,x})+'\n';step(1);
+  }
+  if(withDict)for(const st of['dict','wik']){
+    let last;
+    for(;;){
+      const[ks,vs]=await pageOf(st,last===undefined?undefined:IDBKeyRange.lowerBound(last,true),400);
+      if(!ks.length)break;
+      for(let i=0;i<ks.length;i++)yield JSON.stringify({t:st,k:ks[i],v:vs[i]})+'\n';
+      last=ks[ks.length-1];step(ks.length);
+    }
+  }
+  yield JSON.stringify({t:'end'})+'\n';
+}
+async function saveBackup(){
+  if(busy){say('Please wait for the current task to finish.');return}
+  busy=true;
+  try{
+    const withDict=!$('#bkdl').hidden&&$('#bkd').checked,nb=await idb(b=>b.count());
+    const total=Math.max(1,nb+(withDict?(await countOf('dict'))+(await countOf('wik')):0));let n=0;
+    const step=k=>{const before=n;n+=k;if(Math.floor(n/60)!==Math.floor(before/60))say(`Saving backup… ${Math.min(99,Math.round(n/total*100))}%`)};
+    say('Saving backup…');await tick();
+    const enc=new TextEncoder(),it=backupLines(withDict,step),gz=typeof CompressionStream!=='undefined';
+    let rs=new ReadableStream({async pull(c){const{value,done}=await it.next();if(done)c.close();else c.enqueue(enc.encode(value))}});
+    if(gz)rs=rs.pipeThrough(new CompressionStream('gzip'));
+    const dt=new Date(),ymd=`${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+    const blob=new Blob([await new Response(rs).blob()],{type:gz?'application/gzip':'application/x-ndjson'}),name=`folio-backup-${ymd}.jsonl${gz?'.gz':''}`;
+    const url=URL.createObjectURL(blob),a=document.createElement('a');
+    a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),120000);
+    store.set('folio:lastbackup',JSON.stringify({t:Date.now(),size:blob.size,name}));
+    bkInfo();
+    say(`Backup ready: "${name}" (${fmt(blob.size)}). Your browser should have saved it to Downloads. It holds the full text of your books, so keep it somewhere safe.`);
+  }catch(e){console.error(e);say('The backup could not be saved'+(e&&e.name==='QuotaExceededError'?': not enough storage left.':'.'))}finally{busy=false}
+}
+async function* streamLines(rs){
+  const rd=rs.getReader(),td=new TextDecoder();let rest='';
+  for(;;){
+    const{done,value}=await rd.read();if(done)break;
+    const a=(rest+td.decode(value,{stream:true})).split('\n');rest=a.pop();
+    for(const l of a)yield l;
+  }
+  rest+=td.decode();if(rest.trim())yield rest;
+}
+async function restoreBackup(f){
+  if(busy){say('Please wait for the current task to finish.');return}
+  busy=true;let wrote=false,nb=0;
+  try{
+    const head=new Uint8Array(await f.slice(0,2).arrayBuffer()),gz=head[0]===0x1f&&head[1]===0x8b;
+    if(gz&&typeof DecompressionStream==='undefined')throw new Error('nogz');
+    const src=(f.stream?f.stream():new Response(f).body).getReader();let read=0;
+    let rs=new ReadableStream({async pull(c){const{done,value}=await src.read();if(done)c.close();else{read+=value.length;c.enqueue(value)}}});
+    if(gz)rs=rs.pipeThrough(new DecompressionStream('gzip'));
+    const bySig=new Map(((await idb(b=>b.getAll()))||[]).map(b=>[b.sig,b])),pend={dict:[],wik:[]};
+    let hdr=null,dup=0,upd=0,dictOK=false,skipped=false,ended=false,n=0;
+    const putPending=()=>{
+      const snap=Object.entries(pend).filter(([,a])=>a.length).map(([st,a])=>[st,a.splice(0)]);
+      if(!snap.length)return;
+      return dbp.then(d=>new Promise((ok,no)=>{const t=d.transaction(['dict','wik'],'readwrite',{durability:'relaxed'});for(const[st,a]of snap){const s=t.objectStore(st);for(const[k,v]of a)s.put(v,k)}t.oncomplete=ok;t.onerror=t.onabort=()=>no(t.error)}));
+    };
+    for await(const line of streamLines(rs)){
+      if(!line.trim())continue;
+      let o;try{o=JSON.parse(line)}catch(e){throw new Error(hdr?'damaged':'bad')}
+      if(!hdr){
+        if(!o||typeof o.folio!=='number')throw new Error('bad');
+        if(o.folio>BK)throw new Error('newer');
+        hdr=o;const has=Array.isArray(o.dicts)&&o.dicts.length>0;dictOK=has&&!added.length;skipped=has&&!dictOK;continue;
+      }
+      if(o.t==='end'){ended=true;continue}
+      if(o.t==='book'){
+        const m=o.m||{},x=o.x;
+        if(typeof m.sig!=='string'||!Array.isArray(x)||!x.length)continue;
+        const old=bySig.get(m.sig);
+        if(old){dup++;if((+m.opened||0)>(old.opened||0)){old.pct=Math.min(1,Math.max(0,+m.pct||0));old.opened=+m.opened;await idb(b=>b.put(old));upd++}continue}
+        const rec={name:String(m.name||'Untitled').slice(0,200),author:String(m.author||'').slice(0,200),lang:/^[a-z]{2,3}(-[a-z0-9]{2,8})*$/i.test(m.lang||'')?m.lang:'',sig:m.sig.slice(0,300),words:+m.words||0,pct:Math.min(1,Math.max(0,+m.pct||0)),added:+m.added||Date.now(),opened:+m.opened||Date.now()};
+        const bl=x.filter(b=>b&&typeof b.t==='string'&&b.t).map(b=>b.ch?{hd:!!b.hd,t:b.t,ch:true}:{hd:!!b.hd,t:b.t});
+        if(!bl.length)continue;
+        rec.id=await idb((b,t)=>{const q=b.add(rec);q.onsuccess=()=>t.put(bl,q.result);return q});
+        bySig.set(rec.sig,rec);nb++;
+      }else if(dictOK&&o.t==='wik'){
+        if(typeof o.k==='string'&&o.k.length<=8&&typeof o.v==='string'){try{if(Array.isArray(JSON.parse(o.v).e))pend.wik.push([o.k,o.v])}catch(e){}}
+      }else if(dictOK&&o.t==='dict'){
+        const v=o.v;if(typeof o.k==='string'&&v&&typeof v.w==='string'&&Array.isArray(v.s))pend.dict.push([o.k,{w:v.w,s:v.s.slice(0,20),src:String(v.src||'')}]);
+      }
+      if(pend.wik.length+pend.dict.length>=400){wrote=true;await putPending()}
+      if(++n%100===0){say(`Restoring… ${Math.min(99,Math.round(read/f.size*100))}%`);await tick()}
+    }
+    if(!hdr)throw new Error('bad');
+    if(!ended)throw new Error('damaged');
+    if(pend.wik.length+pend.dict.length){wrote=true;await putPending()}
+    if(dictOK){added=hdr.dicts.filter(d=>d&&typeof d.name==='string').map(d=>({name:d.name.slice(0,200),n:+d.n||0,size:+d.size||0}));store.set('folio:dicts',JSON.stringify(added));bcache.clear();dinfo()}
+    await refresh();if(blocks)toShelf();
+    const parts=[];
+    if(nb||!(dup||dictOK||skipped))parts.push(nb?`Restored ${nb} ${nb===1?'book':'books'}.`:'That backup is empty.');
+    if(dup)parts.push(`${dup} already here${upd?` (${upd} reading ${upd===1?'place':'places'} updated)`:''}.`);
+    if(dictOK)parts.push('Dictionaries restored.');
+    if(skipped)parts.push('Dictionaries in the backup were skipped because this device already has added dictionaries (use Remove added first).');
+    say(parts.join(' '));
+  }catch(e){
+    console.error(e);
+    if(wrote)dbp.then(d=>{const t=d.transaction(['dict','wik'],'readwrite');t.objectStore('dict').clear();t.objectStore('wik').clear()}).catch(()=>{});
+    const m=e&&e.message;
+    await refresh();
+    say(m==='bad'?'That does not look like a Folio backup.':m==='newer'?'That backup was made by a newer version of Folio. Update Folio, then try again.':m==='nogz'?'This browser cannot open compressed backups. Try a newer browser.':e&&e.name==='QuotaExceededError'?'There is not enough storage left on this device to restore that.':'The backup file is damaged or incomplete'+(nb?` (${nb} ${nb===1?'book was':'books were'} restored before it ended).`:'.'));
+  }finally{busy=false}
+}
+$('#bksave').onclick=saveBackup;
+$('#bkrest').onclick=()=>$('#rfile').click();
+$('#rfile').onchange=e=>{const f=e.target.files[0];e.target.value='';if(f)restoreBackup(f)};
 let rt;new ResizeObserver(()=>{clearTimeout(rt);rt=setTimeout(layout,100)}).observe(stage);
 matchMedia('(prefers-color-scheme:dark)').addEventListener('change',()=>{if(S.theme==='auto')apply()});
 let ip=null;const inst=$('#inst');
@@ -1132,16 +1301,21 @@ addEventListener('beforeinstallprompt',e=>{e.preventDefault();ip=e;inst.hidden=f
 inst.onclick=async()=>{if(!ip)return;ip.prompt();await ip.userChoice.catch(()=>{});ip=null;inst.hidden=true};
 addEventListener('appinstalled',()=>{inst.hidden=true});
 if('launchQueue' in window)launchQueue.setConsumer(async q=>{if(q.files&&q.files.length)addFiles(await Promise.all(q.files.map(h=>h.getFile())))});
-if(/[?&]shared=1/.test(location.search)&&window.caches)caches.open('folio-share').then(async c=>{
-  const fs=[];
-  for(const k of await c.keys()){const r=await c.match(k);fs.push(new File([await r.blob()],decodeURIComponent(r.headers.get('x-name')||'shared.pdf'),{}));await c.delete(k)}
-  history.replaceState(history.state,'',location.pathname);
-  if(fs.length)addFiles(fs);
-}).catch(()=>{});
+if(window.caches){
+  if(/[?&]shared=1/.test(location.search))caches.open('folio-share').then(async c=>{
+    const fs=[];
+    for(const k of await c.keys()){const r=await c.match(k);let nm='shared.pdf';try{nm=decodeURIComponent(r.headers.get('x-name')||nm)}catch(e){}fs.push(new File([await r.blob()],nm,{}));await c.delete(k)}
+    history.replaceState(history.state,'',location.pathname);
+    let other=false;try{other=!!document.referrer&&new URL(document.referrer).origin!==location.origin}catch(e){}
+    if(fs.length&&(!other||confirm(`Add ${fs.length>1?fs.length+' files':'"'+fs[0].name+'"'} to your Folio library?`)))addFiles(fs);
+  }).catch(()=>{});
+  else caches.delete('folio-share').catch(()=>{});
+}
 if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol))navigator.serviceWorker.register('sw.js').catch(()=>{});
 apply();
 dinfo();
 $('#title').textContent='Library';refresh();
+Promise.all([countOf('dict'),countOf('wik')]).then(([a,b])=>{if(added.length&&!a&&!b){added=[];store.set('folio:dicts','[]');dinfo()}}).catch(()=>{});
 if(!window.pdfjsLib)say('The PDF engine did not start. Try reloading the page.');
 })();
 </script>
