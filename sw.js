@@ -1,4 +1,4 @@
-const V='folio-v10',MUST=['./','index.html'],EXTRA=['manifest.webmanifest','icon-192.png','icon-512.png','icon-maskable-512.png'];
+const V='folio-v11',MUST=['./','index.html'],EXTRA=['manifest.webmanifest','icon-192.png','icon-512.png','icon-maskable-512.png'];
 self.addEventListener('install',e=>e.waitUntil((async()=>{
   const c=await caches.open(V),fresh=u=>new Request(u,{cache:'reload'});
   await c.addAll(MUST.map(fresh));

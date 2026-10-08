@@ -89,10 +89,26 @@ body.drag #stage{outline:2px dashed var(--acc);outline-offset:-10px}
 #bkdl{display:block;margin:10px 8px 0;color:var(--mute);font-size:.88em}
 #bkdl[hidden]{display:none}
 #bkdl input{margin-right:.5em;accent-color:var(--acc)}
+.ic{padding:.4em .55em;line-height:0;display:inline-flex}
+.ic[hidden]{display:none}
+.ic svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linejoin:round;stroke-linecap:round}
+.ic.on{color:var(--acc);border-color:var(--acc)}
+.ic.on svg{fill:var(--acc)}
+#marks{position:absolute;right:14px;top:calc(env(safe-area-inset-top,0px) + 54px);z-index:5;box-sizing:border-box;background:var(--page);border:1px solid var(--edge);border-radius:12px;box-shadow:0 12px 32px rgba(0,0,0,.2);width:min(380px,calc(100vw - 28px));max-height:min(62vh,540px);overflow:auto;padding:8px 12px 10px}
+#marks[hidden]{display:none}
+#marks .mh{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:2px 0 8px;border-bottom:1px solid var(--edge)}
+#mlist{list-style:none;margin:0;padding:0}
+#mlist li{display:flex;align-items:stretch;border-bottom:1px solid var(--edge)}
+#mlist .mk{flex:1;min-width:0;text-align:left;border:0;border-radius:8px;padding:9px 6px;display:grid;gap:2px;cursor:pointer;background:none}
+#mlist .sn2{font:15px/1.35 var(--ff);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+#mlist .mt{color:var(--mute);font-size:.82em}
+#mlist .x{border:0;color:var(--mute);min-width:44px;font-size:1.3em;padding:0}
+#marks .none{color:var(--mute);margin:10px 4px 4px;font-size:.92em;line-height:1.5}
+#sheet.marked::before{content:"";position:absolute;top:-2px;right:26px;width:20px;height:34px;background:var(--acc);-webkit-clip-path:polygon(0 0,100% 0,100% 100%,50% 76%,0 100%);clip-path:polygon(0 0,100% 0,100% 100%,50% 76%,0 100%);z-index:2;pointer-events:none}
 </style>
 </head>
 <body class="shelf">
-<header id="bar"><button id="open">Add books</button><span id="title"></span><button id="aa" aria-expanded="false" aria-label="Reading settings">Aa</button></header>
+<header id="bar"><button id="open">Add books</button><span id="title"></span><button id="bmk" class="ic" hidden aria-pressed="false" aria-label="Bookmark this page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18l-6-4.5L6 21z"/></svg></button><button id="bml" class="ic" hidden aria-expanded="false" aria-label="Show bookmarks"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg></button><button id="aa" aria-expanded="false" aria-label="Reading settings">Aa</button></header>
 <p id="status" role="status"></p>
 <div id="menu" hidden>
 <div class="row"><span>Size</span><button data-z="-1" aria-label="Smaller text">A−</button><button data-z="1" aria-label="Larger text">A+</button></div>
@@ -101,6 +117,7 @@ body.drag #stage{outline:2px dashed var(--acc);outline-offset:-10px}
 <div class="row"><span>Words</span><button id="dadd">Add dictionary</button><button id="dclr">Remove added</button></div>
 <p id="dinfo"></p>
 </div>
+<aside id="marks" hidden aria-label="Bookmarks"><div class="mh"><b>Bookmarks</b><button id="mhere"></button></div><ul id="mlist"></ul><p id="mnone" class="none">No bookmarks yet. Tap the ribbon at the top to mark a page.</p></aside>
 <main id="stage">
 <div id="shelf">
 <div id="drop"><h1>Read PDFs and EPUBs like a book</h1><p>Each file's text is set into pages that fit your screen. Add as many as you like: they are kept in a library on this device, so you can pick each one up where you left off. Nothing is uploaded. While reading, select a word to see its meaning. You can also drop files anywhere on this page.</p><button id="pick">Add books</button></div>
@@ -209,6 +226,7 @@ function go(i,anim=true,keep=false){if(!keep)hideCard();
   for(let k=1;k<=L;k++)s.push(`-${k}px ${k}px 0 var(${k%2?'--edge':'--page'})`);
   s.push('0 20px 44px rgba(0,0,0,.18)');
   sheet.style.boxShadow=s.join(',');
+  syncMarks();
 }
 
 function layout(){
@@ -418,7 +436,7 @@ async function refresh(){
   $('#books').replaceChildren(...lib.map(b=>{
     const pc=Math.round((b.pct||0)*100),li=mk('li'),o=mk('button','bk'),pr=mk('span','pr'),i=mk('i'),a=mk('div','act');
     li.dataset.id=b.id;o.dataset.a='open';i.style.width=pc+'%';pr.append(i);
-    o.append(mk('span','nm',b.name||'Untitled'),mk('span','meta',`${b.author?b.author+' · ':''}${pc}% read · ${(b.words||0).toLocaleString()} words`),pr);
+    o.append(mk('span','nm',b.name||'Untitled'),mk('span','meta',`${b.author?b.author+' · ':''}${pc}% read · ${(b.words||0).toLocaleString()} words${(b.marks&&b.marks.length)?` · ${b.marks.length} ${b.marks.length===1?'bookmark':'bookmarks'}`:''}`),pr);
     for(const x of ['rename','remove']){const k=mk('button','',x==='rename'?'Rename':'Remove');k.dataset.a=x;a.append(k)}
     li.append(o,a);return li;
   }));
@@ -453,10 +471,11 @@ async function openBook(id){
   $('#shelf').hidden=true;sheet.hidden=false;document.body.classList.remove('shelf','calm');
   if(!(history.state&&history.state.r))history.pushState({r:1},'');
   draw();prog=m.pct||0;layout();
+  mkBtn.hidden=mlBtn.hidden=false;syncMarks();
 }
 
 function toShelf(){
-  hideCard();flush();blocks=null;cur=null;flow.replaceChildren();closeMenu();
+  hideCard();closeMarks();mkBtn.hidden=mlBtn.hidden=true;flush();blocks=null;cur=null;flow.replaceChildren();closeMenu();
   sheet.hidden=true;$('#shelf').hidden=false;document.body.classList.add('shelf');document.body.classList.remove('calm');
   $('#title').textContent='Library';$('#open').textContent='Add books';$('#pg').textContent='';
   refresh();
@@ -496,7 +515,7 @@ addEventListener('popstate',()=>{if(blocks)toShelf()});
 addEventListener('pagehide',flush);
 addEventListener('visibilitychange',()=>{if(document.hidden)flush()});
 $('#file').onchange=e=>{addFiles([...e.target.files]);e.target.value=''};
-$('#aa').onclick=e=>{menu.hidden=!menu.hidden;e.currentTarget.setAttribute('aria-expanded',String(!menu.hidden))};
+$('#aa').onclick=e=>{closeMarks();menu.hidden=!menu.hidden;e.currentTarget.setAttribute('aria-expanded',String(!menu.hidden))};
 menu.onclick=e=>{
   const b=e.target.closest('button');if(!b)return;const d=b.dataset;
   if(d.z)S.size+=+d.z*2;if(d.f)S.face=d.f;if(d.t)S.theme=d.t;
@@ -511,6 +530,7 @@ addEventListener('keydown',e=>{
   else if(k==='ArrowLeft'||k==='PageUp'||(k===' '&&e.shiftKey))go(idx-1);
   else if(k==='Home')go(0);
   else if(k==='End')go(total-1);
+  else if(k==='b'||k==='B')toggleMark();
   else return;
   e.preventDefault();
 });
@@ -522,6 +542,7 @@ stage.addEventListener('pointerup',e=>{
   if(e.pointerType==='mouse'&&e.button!==0){sx=null;return}
   const dx=e.clientX-sx,dy=e.clientY-sy,long=Date.now()-t0>350;sx=null;
   if(!menu.hidden){closeMenu();return}
+  if(!mpanel.hidden){closeMarks();return}
   if(was){hideCard();return}
   const sel=getSelection();
   if(sel&&!sel.isCollapsed&&sel.toString().trim()){setTimeout(check,60);return}
@@ -1028,7 +1049,7 @@ function check(){
   }
 }
 let sc;document.addEventListener('selectionchange',()=>{clearTimeout(sc);sc=setTimeout(()=>{if(sx===null)check()},400)});
-addEventListener('keydown',e=>{if(e.key!=='Escape')return;if(!card.hidden)hideCard();else if(!menu.hidden)closeMenu()});
+addEventListener('keydown',e=>{if(e.key!=='Escape')return;if(!card.hidden)hideCard();else if(!mpanel.hidden)closeMarks();else if(!menu.hidden)closeMenu()});
 $('#dx').onclick=hideCard;
 
 // Adding a full dictionary: StarDict sets (.ifo + .idx + .dict/.dict.dz), .json, or tab-separated .tsv
@@ -1171,6 +1192,69 @@ $('#dclr').onclick=function(){
   delete this.dataset.sure;this.textContent='Remove added';
   dbp.then(d=>new Promise((ok,no)=>{const t=d.transaction(['dict','wik'],'readwrite');t.objectStore('dict').clear();t.objectStore('wik').clear();t.oncomplete=ok;t.onerror=t.onabort=()=>no(t.error)})).then(()=>{bcache.clear();added=[];store.set('folio:dicts','[]');dinfo();say('Removed the added dictionaries. The built-in starter stays.')},()=>say('Could not remove them.'));
 };
+// ---- Bookmarks: saved by position in the text (block + character), so they stay right when the text size or screen changes ----
+const mkBtn=$('#bmk'),mlBtn=$('#bml'),mpanel=$('#marks'),mlist=$('#mlist');
+const closeMarks=()=>{mpanel.hidden=true;mlBtn.setAttribute('aria-expanded','false')};
+const cleanMarks=a=>(Array.isArray(a)?a:[]).slice(0,500).filter(x=>x&&Number.isFinite(+x.b)&&+x.b>=0).map(x=>({b:Math.floor(+x.b),o:Math.max(0,Math.floor(+x.o)||0),t:String(x.t||'').slice(0,160),c:String(x.c||'').slice(0,80),p:Math.min(1,Math.max(0,+x.p||0)),d:+x.d||Date.now()}));
+function markPage(m){                       // which page (or spread) holds this bookmark in the current layout
+  const el=flow.children[m.b],n=el&&el.firstChild;
+  if(!n||n.nodeType!==3||!n.nodeValue)return -1;
+  const o=Math.min(m.o||0,n.nodeValue.length-1),r=document.createRange();
+  try{r.setStart(n,o);r.setEnd(n,o+1)}catch(e){return -1}
+  const rc=r.getClientRects()[0]||r.getBoundingClientRect(),fr=flow.getBoundingClientRect();
+  return Math.max(0,Math.min(total-1,Math.floor((rc.left-fr.left+2)/step)));
+}
+function topPos(){                          // the first piece of text at the top-left of the page being read
+  const r=book.getBoundingClientRect();
+  for(const dy of[8,20,34,50,70]){
+    const x=r.left+8,y=r.top+dy;let n=null,o=0;
+    if(document.caretPositionFromPoint){const c=document.caretPositionFromPoint(x,y);if(c){n=c.offsetNode;o=c.offset}}
+    else if(document.caretRangeFromPoint){const c=document.caretRangeFromPoint(x,y);if(c){n=c.startContainer;o=c.startOffset}}
+    if(!n||!flow.contains(n))continue;
+    let el=n.nodeType===3?n.parentNode:n;if(n.nodeType!==3)o=0;
+    while(el&&el.parentNode!==flow)el=el.parentNode;
+    if(el)return{b:Array.prototype.indexOf.call(flow.children,el),o};
+  }
+  return null;
+}
+function addMark(){
+  const pos=topPos();if(!pos||!blocks[pos.b])return false;
+  const t=blocks[pos.b].t;let s=pos.o;for(let k=0;k<30&&s>0&&/\S/.test(t[s-1]);k++)s--;       // snippet starts at a word start
+  const sn=(t.slice(s)+' '+((blocks[pos.b+1]||{}).t||'')).replace(/\s+/g,' ').trim().slice(0,110);
+  let ch='';for(let i=pos.b;i>=0;i--)if(blocks[i].hd){ch=blocks[i].t.slice(0,60);break}
+  (cur.marks=cur.marks||[]).push({b:pos.b,o:pos.o,t:sn,c:ch,p:(pos.b+pos.o/Math.max(1,t.length))/blocks.length,d:Date.now()});
+  cur.marks.sort((a,b)=>a.b-b.b||a.o-b.o);
+  return true;
+}
+const marksHere=()=>((cur&&cur.marks)||[]).filter(m=>markPage(m)===idx);
+function toggleMark(){
+  if(!blocks||!cur)return;
+  const here=marksHere();
+  if(here.length)cur.marks=cur.marks.filter(m=>!here.includes(m));else if(!addMark())return;
+  saveSoon();syncMarks();
+}
+function syncMarks(){
+  const on=!!blocks&&marksHere().length>0;
+  sheet.classList.toggle('marked',on);mkBtn.classList.toggle('on',on);mkBtn.setAttribute('aria-pressed',String(on));
+  mkBtn.setAttribute('aria-label',on?'Remove bookmark from this page':'Bookmark this page');
+  if(!mpanel.hidden)paintMarks();
+}
+function paintMarks(){
+  const mk=(tag,c,x)=>{const e=document.createElement(tag);if(c)e.className=c;if(x!==undefined)e.textContent=x;return e},list=(cur&&cur.marks)||[];
+  $('#mhere').textContent=marksHere().length?'Remove from this page':'Add to this page';
+  mlist.replaceChildren(...list.map(m=>{
+    const li=mk('li'),b=mk('button','mk'),x=mk('button','x','×');
+    b.append(mk('span','sn2',m.t||'Bookmark'),mk('span','mt',[m.c,Math.round((m.p||0)*100)+'%',new Date(m.d).toLocaleDateString(undefined,{month:'short',day:'numeric'})].filter(Boolean).join(' · ')));
+    b.onclick=()=>{const pg=markPage(m);closeMarks();if(pg>=0)go(pg)};
+    x.setAttribute('aria-label','Delete this bookmark');
+    x.onclick=()=>{cur.marks=cur.marks.filter(z=>z!==m);saveSoon();syncMarks();paintMarks()};
+    li.append(b,x);return li;
+  }));
+  $('#mnone').hidden=list.length>0;
+}
+mkBtn.onclick=toggleMark;
+mlBtn.onclick=()=>{if(mpanel.hidden){closeMenu();paintMarks();mpanel.hidden=false;mlBtn.setAttribute('aria-expanded','true')}else closeMarks()};
+$('#mhere').onclick=toggleMark;
 // ---- Backup and restore: one file with your books, reading places and (if you choose) added dictionaries ----
 const BK=1,fmt=n=>n<1e6?Math.max(1,Math.round(n/1e3))+' KB':(n/1e6).toFixed(1)+' MB';
 function bkInfo(){
@@ -1200,6 +1284,17 @@ async function* backupLines(withDict,step){
   }
   yield JSON.stringify({t:'end'})+'\n';
 }
+async function nativeSave(blob,name,mime){        // Android app only: write the file through the system "save as" screen
+  const ready=new Promise(res=>{window.__nativeSaveReady=res;setTimeout(()=>res(false),180000)});
+  FolioNative.saveStart(name,mime);
+  if(!await ready)return 'cancelled';
+  for(let o=0;o<blob.size;o+=786432){
+    const buf=new Uint8Array(await blob.slice(o,o+786432).arrayBuffer());let s='';
+    for(let i=0;i<buf.length;i+=8192)s+=String.fromCharCode.apply(null,buf.subarray(i,i+8192));
+    FolioNative.saveChunk(btoa(s));
+  }
+  return FolioNative.saveEnd()?'ok':'error';
+}
 async function saveBackup(){
   if(busy){say('Please wait for the current task to finish.');return}
   busy=true;
@@ -1213,11 +1308,18 @@ async function saveBackup(){
     if(gz)rs=rs.pipeThrough(new CompressionStream('gzip'));
     const dt=new Date(),ymd=`${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
     const blob=new Blob([await new Response(rs).blob()],{type:gz?'application/gzip':'application/x-ndjson'}),name=`folio-backup-${ymd}.jsonl${gz?'.gz':''}`;
-    const url=URL.createObjectURL(blob),a=document.createElement('a');
-    a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),120000);
+    const native=!!(window.FolioNative&&FolioNative.saveStart);
+    if(native){
+      const r=await nativeSave(blob,name,gz?'application/gzip':'application/x-ndjson');
+      if(r==='cancelled'){say('Backup cancelled.');return}
+      if(r!=='ok')throw new Error('native');
+    }else{
+      const url=URL.createObjectURL(blob),a=document.createElement('a');
+      a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),120000);
+    }
     store.set('folio:lastbackup',JSON.stringify({t:Date.now(),size:blob.size,name}));
     bkInfo();
-    say(`Backup ready: "${name}" (${fmt(blob.size)}). Your browser should have saved it to Downloads. It holds the full text of your books, so keep it somewhere safe.`);
+    say(native?`Backup saved: "${name}" (${fmt(blob.size)}). It holds the full text of your books, so keep it somewhere safe.`:`Backup ready: "${name}" (${fmt(blob.size)}). Your browser should have saved it to Downloads. It holds the full text of your books, so keep it somewhere safe.`);
   }catch(e){console.error(e);say('The backup could not be saved'+(e&&e.name==='QuotaExceededError'?': not enough storage left.':'.'))}finally{busy=false}
 }
 async function* streamLines(rs){
@@ -1239,7 +1341,7 @@ async function restoreBackup(f){
     let rs=new ReadableStream({async pull(c){const{done,value}=await src.read();if(done)c.close();else{read+=value.length;c.enqueue(value)}}});
     if(gz)rs=rs.pipeThrough(new DecompressionStream('gzip'));
     const bySig=new Map(((await idb(b=>b.getAll()))||[]).map(b=>[b.sig,b])),pend={dict:[],wik:[]};
-    let hdr=null,dup=0,upd=0,dictOK=false,skipped=false,ended=false,n=0;
+    let hdr=null,dup=0,upd=0,nm=0,dictOK=false,skipped=false,ended=false,n=0;
     const putPending=()=>{
       const snap=Object.entries(pend).filter(([,a])=>a.length).map(([st,a])=>[st,a.splice(0)]);
       if(!snap.length)return;
@@ -1258,8 +1360,14 @@ async function restoreBackup(f){
         const m=o.m||{},x=o.x;
         if(typeof m.sig!=='string'||!Array.isArray(x)||!x.length)continue;
         const old=bySig.get(m.sig);
-        if(old){dup++;if((+m.opened||0)>(old.opened||0)){old.pct=Math.min(1,Math.max(0,+m.pct||0));old.opened=+m.opened;await idb(b=>b.put(old));upd++}continue}
-        const rec={name:String(m.name||'Untitled').slice(0,200),author:String(m.author||'').slice(0,200),lang:/^[a-z]{2,3}(-[a-z0-9]{2,8})*$/i.test(m.lang||'')?m.lang:'',sig:m.sig.slice(0,300),words:+m.words||0,pct:Math.min(1,Math.max(0,+m.pct||0)),added:+m.added||Date.now(),opened:+m.opened||Date.now()};
+        if(old){
+          dup++;let ch=false;
+          if((+m.opened||0)>(old.opened||0)){old.pct=Math.min(1,Math.max(0,+m.pct||0));old.opened=+m.opened;ch=true;upd++}
+          const add=cleanMarks(m.marks).filter(z=>!(old.marks||[]).some(e=>e.b===z.b&&Math.abs(e.o-z.o)<40));
+          if(add.length){old.marks=(old.marks||[]).concat(add).sort((a,c)=>a.b-c.b||a.o-c.o);ch=true;nm+=add.length}
+          if(ch)await idb(b=>b.put(old));
+          continue}
+        const rec={name:String(m.name||'Untitled').slice(0,200),author:String(m.author||'').slice(0,200),lang:/^[a-z]{2,3}(-[a-z0-9]{2,8})*$/i.test(m.lang||'')?m.lang:'',sig:m.sig.slice(0,300),words:+m.words||0,pct:Math.min(1,Math.max(0,+m.pct||0)),added:+m.added||Date.now(),opened:+m.opened||Date.now(),marks:cleanMarks(m.marks)};
         const bl=x.filter(b=>b&&typeof b.t==='string'&&b.t).map(b=>b.ch?{hd:!!b.hd,t:b.t,ch:true}:{hd:!!b.hd,t:b.t});
         if(!bl.length)continue;
         rec.id=await idb((b,t)=>{const q=b.add(rec);q.onsuccess=()=>t.put(bl,q.result);return q});
@@ -1279,7 +1387,7 @@ async function restoreBackup(f){
     await refresh();if(blocks)toShelf();
     const parts=[];
     if(nb||!(dup||dictOK||skipped))parts.push(nb?`Restored ${nb} ${nb===1?'book':'books'}.`:'That backup is empty.');
-    if(dup)parts.push(`${dup} already here${upd?` (${upd} reading ${upd===1?'place':'places'} updated)`:''}.`);
+    if(dup){const bits=[];if(upd)bits.push(`${upd} reading ${upd===1?'place':'places'} updated`);if(nm)bits.push(`${nm} ${nm===1?'bookmark':'bookmarks'} added`);parts.push(`${dup} already here${bits.length?` (${bits.join(', ')})`:''}.`)}
     if(dictOK)parts.push('Dictionaries restored.');
     if(skipped)parts.push('Dictionaries in the backup were skipped because this device already has added dictionaries (use Remove added first).');
     say(parts.join(' '));
@@ -1311,7 +1419,7 @@ if(window.caches){
   }).catch(()=>{});
   else caches.delete('folio-share').catch(()=>{});
 }
-if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol))navigator.serviceWorker.register('sw.js').catch(()=>{});
+if('serviceWorker' in navigator&&!window.FolioNative&&/^https?:$/.test(location.protocol))navigator.serviceWorker.register('sw.js').catch(()=>{});
 apply();
 dinfo();
 $('#title').textContent='Library';refresh();
