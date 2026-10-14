@@ -105,6 +105,9 @@ body.drag #stage{outline:2px dashed var(--acc);outline-offset:-10px}
 #mlist .x{border:0;color:var(--mute);min-width:44px;font-size:1.3em;padding:0}
 #marks .none{color:var(--mute);margin:10px 4px 4px;font-size:.92em;line-height:1.5}
 #sheet.marked::before{content:"";position:absolute;top:-2px;right:26px;width:20px;height:34px;background:var(--acc);-webkit-clip-path:polygon(0 0,100% 0,100% 100%,50% 76%,0 100%);clip-path:polygon(0 0,100% 0,100% 100%,50% 76%,0 100%);z-index:2;pointer-events:none}
+#dict .hd{font-style:italic;color:var(--mute)}
+#dict .nt{margin:.1em 0 .4em;color:var(--mute);font-size:.88em;font-style:italic}
+#dict .more{border:0;background:none;color:var(--acc);padding:.3em 0;font-size:.9em;text-decoration:underline;cursor:pointer}
 </style>
 </head>
 <body class="shelf">
@@ -972,49 +975,79 @@ const dmany=keys=>dbp.then(d=>new Promise(ok=>{
     t.onerror=t.onabort=()=>ok(keys.map(()=>null));
   }catch(e){ok(keys.map(()=>null))}
 })).catch(()=>keys.map(()=>null));
-const POSN={adj:'adjective',adv:'adverb',pron:'pronoun',prep:'preposition',conj:'conjunction',intj:'interjection',name:'proper noun',num:'numeral',det:'determiner',part:'particle',art:'article',abbrev:'abbreviation',postp:'postposition'};
-const FORMOF=/(?:plural|past participle|present participle|past tense|simple past|third[- ]person singular|comparative|superlative|gerund|alternative (?:form|spelling)|obsolete (?:form|spelling)|archaic (?:form|spelling)|informal (?:form|spelling)|nonstandard (?:form|spelling)|misspelling)\b[^.;(]*?\bof\s+([\p{L}][\p{L}'’-]*)/iu;
+const POSN={adj:'adjective',adv:'adverb',pron:'pronoun',prep:'preposition',conj:'conjunction',intj:'interjection',name:'proper noun',num:'numeral',det:'determiner',part:'particle',art:'article',abbrev:'abbreviation',postp:'postposition',prep_phrase:'prepositional phrase',phrase:'phrase'};
+const TAGONLY=/^(?:\([^()]{1,90}\)[\s,;:.\-]*)+$/,CLITIC={m:'am',re:'are',ve:'have',ll:'will',d:'would / had',s:'is / has (or possessive)'};
+const FORMOF=/^(?:\([^)]*\)\s*)*(?:[^.;:(]{0,70},\s+)?(?:(?:an?|the)\s+)?(?:(?:plural|(?:past|present) participle|past tense|simple past|(?:first|second|third)[- ]person (?:singular|plural)|comparative|superlative|gerund)\b[^.;(]*?|(?:alternative|obsolete|archaic|informal|nonstandard|dated|rare|uncommon|pronunciation|censored|eye dialect|elongated|euphemistic|attributive|ordinal|deliberate|feminist|filter-avoidance|syllabic|uk|us|british|american|canadian|australian|commonwealth(?: and ireland)?|non-oxford british(?: english)?)(?: (?:standard|letter-case))? (?:form|spelling|misspelling|abbreviation)\s+|(?:initialism|acronym|synonym|clipping|contraction|diminutive|variant|misspelling|abbreviation)\s+)of\s+(?:(?:the|female|male|given|first|personal|name|surname|number)\s+)*(['’]?[\p{L}\p{N}][\p{L}\p{N}'’.-]*)(?=(?:\s*\([^)]*\))*[\s.;,:!?]*$)/iu;   // the named word must be the last thing in the sense, so "Initialism of United States" is not read as "United"
 // cap = a capitalised word in the middle of a sentence, so try the capitalised entry first (Paris, Polish)
 async function define(raw,cap){
-  const clean=raw.replace(/[’‘]/g,"'").replace(/^[^\p{L}]+|[^\p{L}]+$/gu,'').replace(/'s$/,''),t=clean.toLowerCase();
+  const typed=raw.normalize('NFC').replace(/[’‘ʼ]/g,"'").trim();
+  const clean=typed.replace(/^[^\p{L}]+|[^\p{L}]+$/gu,''),t=clean.toLowerCase();
   if(!t)return{q:raw,miss:true};
-  const T=s=>s[0].toUpperCase()+s.slice(1),parts=t.split(/[\s-]+/).filter(Boolean).slice(0,4),
+  if(clean==='I')cap=true;
+  const T=s=>s[0].toUpperCase()+s.slice(1),both=(w,c)=>{const l=w.toLowerCase();return w===l?[w]:(c?[w,l]:[l,w])};
+  const apos=typed.replace(/^[^\p{L}\p{N}']+/u,'').replace(/[^\p{L}\p{N}']+$/u,'');       // 'em, goin', an': the apostrophe is part of the word
+  const parts=t.split(/[\s-]+/).filter(Boolean).slice(0,4),
     low=[...new Set([t,...parts].flatMap(forms))],up=[...new Set([clean,T(t),t.toUpperCase()])].filter(x=>x!==t),
-    cand=cap?[...up,...low]:[...low,...up],got=await dmany(cand);
+    notes=new Map(),stems=[];
+  // contractions: I'm, he's, we've, you'll, she'd, they're, didn't ...
+  const NT={"can't":'can',"won't":'will',"shan't":'shall'};
+  let m=/^(.+?)n't$/i.exec(clean);
+  if(m){const s=NT[t]||m[1];stems.push([s,`${clean} = ${s} + not`])}
+  else if((m=/^(.+?)'(m|re|ve|ll|d|s)$/i.exec(clean)))stems.push([m[1],`${clean} = ${m[1]} + ${CLITIC[m[2].toLowerCase()]}`]);
+  const stemCand=[];
+  for(const[s,n]of stems)for(const w of(s==='I'?['I','i']:both(s,cap))){stemCand.push(w);if(!notes.has(w))notes.set(w,n)}
+  const cand=[...new Set([...(apos!==clean?both(apos,cap):[]),...(cap?[...up,...low]:[...low,...up]),...stemCand,t+'.',...(clean!==t?[clean+'.']:[])])],got=await dmany(cand);   // e.g. i.e. U.S. only exist with their dots
   for(let i=0;i<cand.length;i++){
     const a=got[i];
-    if(a){const r={q:t,hw:a.w||cand[i],s:a.s,src:a.src,i:a.i,p:a.p,y:a.y,n:a.n};await baseOf(r);return r}
-    const s=starter.get(cand[i].toLowerCase());if(s)return{q:t,hw:cand[i].toLowerCase(),s,src:'Starter dictionary written for Folio (limited)'};
+    if(a){const r={q:t,hw:a.w||cand[i],s:a.s,src:a.src,i:a.i,p:a.p,y:a.y,n:a.n,note:notes.get(cand[i])};await baseOf(r);return r}
+    const s=starter.get(cand[i].toLowerCase());if(s)return{q:t,hw:cand[i].toLowerCase(),s,src:'Starter dictionary written for Folio (limited)',note:notes.get(cand[i])};
   }
   return{q:t,miss:true};
 }
-// "simple past of abate", "plural of pari": also show the entry for the base word
+// "simple past of abate", "plural of colour" (which is itself "alternative spelling of color"): follow up to three steps to a real definition
+const realSenses=s=>(s||[]).filter(z=>!(typeof z==='string'&&TAGONLY.test(z.trim())));
 async function baseOf(r){
-  for(const x of r.s.slice(0,2)){
-    const m=typeof x==='string'&&FORMOF.exec(x);
-    if(!m)continue;
-    const a=(await dmany([...new Set([m[1].toLowerCase(),m[1]])])).find(Boolean);
-    if(a&&a.w!==r.hw)r.base={hw:a.w,s:a.s,p:a.p,i:a.i,y:a.y,n:a.n};
-    return;
+  let cur=r;const trail=[];
+  for(let hop=0;hop<3;hop++){
+    const x=realSenses(cur.s).slice(0,2).find(z=>typeof z==='string'&&z.length<=160&&FORMOF.test(z));
+    if(!x)break;
+    const g=FORMOF.exec(x)[1].replace(/[.,;:]+$/,'');
+    const a=(await dmany([...new Set([g,g.toLowerCase(),g+'.'])])).find(Boolean);
+    if(!a||a.w===cur.hw||a.w===r.hw||trail.includes(a.w))break;
+    trail.push(a.w);cur={hw:a.w,s:a.s,p:a.p,i:a.i,y:a.y,n:a.n};
   }
+  if(trail.length){r.base=cur;r.via=trail.slice(0,-1)}
 }
-let lastQ='',seq=0;
+let lastQ='',seq=0,expanded=false;
 function hideCard(){seq++;if(card.hidden)return;card.hidden=true;lastQ='';const s=getSelection();if(s)s.removeAllRanges()}
 function paint(r,q){
   const mk=(tag,c,x)=>{const e=document.createElement(tag);if(c)e.className=c;if(x!==undefined)e.textContent=x;return e},kids=[];
   const head=(x,c)=>{const h=mk('div',c||'hw',x.hw);if(x.i)h.append(mk('span','ipa',x.i));return h};
   const body=x=>{
+    const me=(x.hw||'').toLowerCase(),real=realSenses(x.s),others=a=>(a||[]).filter(z=>typeof z==='string'&&z.toLowerCase()!==me);
     if(x.p&&x.p.length)kids.push(mk('p','pl',x.p.map(z=>POSN[z]||z).join(' · ')));
-    x.s.slice(0,12).forEach((s,i,a)=>{const d=mk('p','sn');if(s.p)d.append(mk('i','pos',s.p+' '));else if(a.length>1)d.append(mk('span','num',(i+1)+'. '));d.append(document.createTextNode(s.d||s));kids.push(d)});
-    if(x.y&&x.y.length)kids.push(mk('p','dn','Synonyms: '+x.y.slice(0,6).join(', ')));
-    if(x.n&&x.n.length)kids.push(mk('p','dn','Antonyms: '+x.n.slice(0,5).join(', ')));
+    if(!real.length)kids.push(mk('p','dn','This dictionary has no definition text for this word.'));
+    else{
+      const cap=expanded?real.length:10;let k=0,heading=false;
+      real.slice(0,cap).forEach(s=>{
+        const isHead=typeof s==='string'&&/:\s*$/.test(s),d=mk('p',isHead?'sn hd':'sn');
+        if(s.p)d.append(mk('i','pos',s.p+' '));else if(!isHead&&real.length>1)d.append(mk('span','num',(++k)+'. '));
+        if(isHead)heading=true;
+        d.append(document.createTextNode(s.d||s));kids.push(d);
+      });
+      if(real.length>cap){const b=mk('button','more',`Show ${real.length-cap} more ${real.length-cap===1?'meaning':'meanings'}`);b.onclick=()=>{expanded=true;paint(r,q)};kids.push(b)}
+      if(heading)kids.push(mk('p','dn','Some headings above have no text under them in this dictionary.'));
+    }
+    const ys=others(x.y),ns=others(x.n);
+    if(ys.length)kids.push(mk('p','dn','Synonyms: '+ys.slice(0,6).join(', ')));
+    if(ns.length)kids.push(mk('p','dn','Antonyms: '+ns.slice(0,5).join(', ')));
   };
   if(r.miss){
     kids.push(mk('div','hw',r.q||q),mk('p','dn','No entry found for this word.'));
     if(!added.length)kids.push(mk('p','dn','Add a fuller dictionary under Aa, Words, to look up more.'));
   }else{
-    kids.push(head(r));body(r);
-    if(r.base){kids.push(head({hw:'→ '+r.base.hw,i:r.base.i},'hw base'));body(r.base)}
+    kids.push(head(r));if(r.note)kids.push(mk('p','nt',r.note));body(r);
+    if(r.base){kids.push(head({hw:'→ '+r.base.hw,i:r.base.i},'hw base'));if(r.via&&r.via.length)kids.push(mk('p','dn','via '+r.via.join(' → ')));body(r.base)}
     kids.push(mk('p','src',r.src||''));
   }
   dbody.replaceChildren(...kids);
@@ -1036,7 +1069,7 @@ async function showCard(text,rect,cap){
   if(!card.hidden&&text===lastQ)return;
   lastQ=text;const my=++seq,r=await define(text,cap);
   if(my!==seq)return;
-  paint(r,text);card.hidden=false;place(rect);
+  expanded=false;paint(r,text);card.hidden=false;place(rect);
 }
 function check(){
   if(!blocks)return;
@@ -1091,14 +1124,17 @@ async function sniff(f){
   if(nl<0)return false;
   try{const o=JSON.parse(head.slice(0,nl));return !!o&&typeof o==='object'&&!Array.isArray(o)&&('' in o||'word' in o||'headword' in o)&&head.slice(nl+1).trimStart()[0]==='{'}catch(e){return false}
 }
+const TIDY=s=>s.replace(/[\u00ad\u200b-\u200f\u2060\ufeff]/g,'').replace(/\[\[(?:[^\]|]*\|)?([^\]]*)\]\]/g,'$1').replace(/\s+/g,' ').trim();
 function recOf(o){
   const w=['','word','headword'].map(k=>o[k]).find(x=>typeof x==='string'&&x.trim());if(!w)return null;
   let d=['d','definitions','definition','meaning'].map(k=>o[k]).find(x=>x!==undefined);if(d===undefined)return null;
-  d=(Array.isArray(d)?d:[d]).map(x=>typeof x==='string'?x:x&&(x.d||x.def||x.definition)||'').map(x=>String(x).trim()).filter(Boolean).slice(0,12).map(x=>x.slice(0,500));
-  if(!d.length)return null;
-  const r={w:w.trim(),s:d},list=(a,n)=>Array.isArray(a)?a.filter(x=>typeof x==='string').slice(0,n):[],y=list(o.s,8),n=list(o.n,6);
-  if(Array.isArray(o.p)&&o.p.length)r.p=list(o.p,6);
-  if(typeof o.i==='string')r.i=o.i.slice(0,80);
+  d=(Array.isArray(d)?d:[d]).map(x=>typeof x==='string'?x:x&&(x.d||x.def||x.definition)||'').map(x=>TIDY(String(x))).filter(x=>x&&!/^:?Template:/i.test(x));
+  if(d.some(x=>!TAGONLY.test(x)))d=d.filter(x=>!TAGONLY.test(x));else return null;     // a label such as "(transitive)" with no text under it means nothing
+  d=d.slice(0,40).map(x=>x.slice(0,500));
+  const hw=w.trim(),low=hw.toLowerCase(),r={w:hw,s:d};
+  const list=(a,n)=>Array.isArray(a)?a.filter(x=>typeof x==='string'&&x.toLowerCase()!==low&&!/[\[{<]/.test(x)).slice(0,n):[],y=list(o.s,8),n=list(o.n,6);
+  if(Array.isArray(o.p)&&o.p.length)r.p=o.p.filter(x=>typeof x==='string').slice(0,6);
+  if(typeof o.i==='string'&&/^[\/\[].+[\/\]]$/.test(o.i.trim()))r.i=o.i.trim().slice(0,80);
   if(y.length)r.y=y;if(n.length)r.n=n;
   return r;
 }
@@ -1116,7 +1152,7 @@ async function importDict2(fs){
   let name=base,k2=2;while(added.some(d=>d.name===name))name=`${base} (${k2++})`;
   const hadAny=added.length>0;
   try{
-    let count=0;
+    let count=0,skipped=0;
     say(`Reading ${name}…`);await tick();
     if(!star&&js&&await sniff(js)){
       // one entry per line: stream it, and save in batches
@@ -1144,7 +1180,7 @@ async function importDict2(fs){
           if(l.length<3)continue;
           let o;try{o=JSON.parse(l)}catch(e){continue}
           if(!count&&''in o)src=`${name} · Wiktionary data (CC BY-SA 4.0)`;
-          const r=recOf(o);if(!r)continue;
+          const r=recOf(o);if(!r){skipped++;continue}
           const k=pre(r.w);let a=buckets.get(k);if(!a)buckets.set(k,a=[]);
           a.push(r);count++;
           if(++held>=50000)await flushBuckets();
@@ -1178,7 +1214,7 @@ async function importDict2(fs){
     }
     if(!count)throw new Error('empty');
     added.push({name,n:count,size});bcache.clear();store.set('folio:dicts',JSON.stringify(added));dinfo();
-    say(`Added dictionary "${name}" with ${count.toLocaleString()} ${count===1?'word':'words'}.`);
+    say(`Added dictionary "${name}" with ${count.toLocaleString()} ${count===1?'word':'words'}.${skipped?` Skipped ${skipped.toLocaleString()} ${skipped===1?'entry':'entries'} with no definition text.`:''}`);
   }catch(e){
     console.error(e);
     if(!hadAny){bcache.clear();dbp.then(d=>{const t=d.transaction(['dict','wik'],'readwrite');t.objectStore('dict').clear();t.objectStore('wik').clear()}).catch(()=>{})}
